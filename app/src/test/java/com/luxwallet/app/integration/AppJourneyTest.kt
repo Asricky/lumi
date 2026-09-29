@@ -73,6 +73,59 @@ class AppJourneyTest {
         compose.onNodeWithText("Beranda").performClick()
         compose.onNodeWithText("Hi there 👋").assertIsDisplayed()
     }
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers="w320dp-h740dp-mdpi")
+    fun calculatorFormatsPasteResultAndKeepsNavigationUsable() {
+        lateinit var view: android.view.View
+        compose.setContent {
+            view=androidx.compose.ui.platform.LocalView.current
+            nav=rememberNavController()
+            LuxWalletTheme { LuxAppScaffold(nav) }
+        }
+        compose.runOnIdle { nav.openScreen(LuxDestinations.CALCULATOR) }
+        compose.onNode(hasSetTextAction()).performTextInput("1.500.000,50×2")
+        compose.onNodeWithText("=").performScrollTo().performClick()
+        compose.onNodeWithText("3.000.001").performScrollTo().assertIsDisplayed()
+        val bitmap=android.graphics.Bitmap.createBitmap(view.width,view.height,android.graphics.Bitmap.Config.ARGB_8888)
+        compose.runOnIdle { view.draw(android.graphics.Canvas(bitmap)) }
+        java.io.File("build/reports/ui").mkdirs()
+        java.io.File("build/reports/ui/calculator-v8.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+        compose.onNodeWithContentDescription("+").performScrollTo().performClick()
+        compose.onNodeWithContentDescription("9").performScrollTo().performClick()
+        compose.onNodeWithText("=").performScrollTo().performClick()
+        compose.onNodeWithText("3.000.010").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Bersihkan perhitungan").performScrollTo().performClick()
+        compose.onNode(hasSetTextAction()).performTextInput("5000÷0")
+        compose.onNodeWithText("=").performScrollTo().performClick()
+        compose.onNodeWithText("Tidak bisa dibagi nol").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithContentDescription("Kembali").performClick()
+        compose.runOnIdle { Assert.assertEquals(LuxDestinations.HOME,nav.currentDestination?.route) }
+    }
+    @Test
+    @org.robolectric.annotation.GraphicsMode(org.robolectric.annotation.GraphicsMode.Mode.NATIVE)
+    @Config(qualifiers="w393dp-h851dp-mdpi")
+    fun expenseBarsSelectDatesAndHideAllFinancialData() {
+        lateinit var view: android.view.View
+        var hidden by mutableStateOf(false)
+        var selected by mutableStateOf(java.time.LocalDate.of(2026,9,1))
+        val points=(1..29).map { com.luxwallet.app.engine.DailyExpense(java.time.LocalDate.of(2026,9,it),if(it==20) 95000 else if(it%3==0) 0 else 12000L+it*1000) }
+        compose.setContent {
+            view=androidx.compose.ui.platform.LocalView.current
+            LuxWalletTheme { com.luxwallet.app.feature.calendar.ExpenseTrendChart(points,selected,hidden) {selected=it} }
+        }
+        compose.onNodeWithContentDescription("Pilih tanggal tren pengeluaran").performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(19f) }
+        compose.onNodeWithText("20 September 2026").assertIsDisplayed()
+        compose.onNodeWithText("Rp95.000").assertIsDisplayed()
+        val bitmap=android.graphics.Bitmap.createBitmap(view.width,view.height,android.graphics.Bitmap.Config.ARGB_8888)
+        compose.runOnIdle { view.draw(android.graphics.Canvas(bitmap)) }
+        java.io.File("build/reports/ui").mkdirs()
+        java.io.File("build/reports/ui/expense-bars-v8.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+        compose.runOnIdle { hidden=true }
+        compose.onNodeWithText("Rp95.000").assertDoesNotExist()
+        compose.onNodeWithContentDescription("Pilih tanggal tren pengeluaran").assertDoesNotExist()
+        compose.onNodeWithText("Tampilkan nominal untuk melihat grafik dan rinciannya.").assertIsDisplayed()
+    }
     @Test fun actualManualEntryCanReturnEditSaveAndNavigateAgain() {
         launch()
         compose.onNodeWithContentDescription("Catat transaksi").performClick()
@@ -272,7 +325,7 @@ class AppJourneyTest {
         compose.onNodeWithText("Tren Pengeluaran").performScrollTo()
         compose.onNodeWithContentDescription("Pilih tanggal tren pengeluaran").performScrollTo()
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0f) }
-        compose.onNodeWithText("1 · Rp0").assertExists()
+        compose.onNodeWithText(java.time.LocalDate.now().withDayOfMonth(1).format(java.time.format.DateTimeFormatter.ofPattern("d MMMM yyyy",java.util.Locale("id","ID")))).assertExists()
         capture("trend-320.png")
     }
 

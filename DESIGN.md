@@ -1,6 +1,6 @@
 # Lumi — Panduan desain
 
-Revisi 26 September 2026 · v7. Perhitungan dan perilaku: [PRD.md](PRD.md).
+Revisi 29 September 2026 · v8. Perhitungan dan perilaku: [PRD.md](PRD.md).
 
 ## Arah produk
 
@@ -109,3 +109,10 @@ Tinjauan: toolbar jumlah pilihan + Pilih semua/Batal pilih + Hapus terpilih teta
 - Struktur PDF: ringkasan/evaluasi/langkah selanjutnya, rincian kategori dengan bar, kalender arus kas, daftar transaksi. Header dan footer konsisten tiap halaman; konten mengalir otomatis ke halaman baru. Bulan berjalan diberi label sementara.
 - Preview memakai PDF asli, satu halaman agar penggunaan memori terkendali. Tombol Sebelumnya/Berikutnya, indikator halaman, slider zoom 100–250%, dan Simpan/download selalu memakai snapshot yang sama. Form, proses, error, empty report, dan pembatalan pemilih file mempunyai state jelas. Back mengikuti scaffold aplikasi.
 - Nada Lumi: tegas pada perilaku yang terukur dan disertai tindakan praktis. Tidak menghina pengguna; kategori terbesar tidak otomatis disebut berlebihan tanpa budget pembanding.
+
+
+## v8 · Kalkulator dan batang pengeluaran
+
+Panel kalkulator putih/surface dengan sudut 24 dp, ekspresi rata kanan, label hasil ringkas, hasil berwarna primary. Tombol angka netral; operator mint; tombol sama dengan teal penuh. Target sentuh minimal 54 dp, jarak 8 dp, sudut 18 dp. Layar tetap bisa digulir pada perangkat kecil dan saat keyboard terbuka. Titik adalah ribuan dan koma desimal, konsisten dengan MoneyField.
+
+Grafik pengeluaran memakai batang terpisah agar setiap tanggal mudah dibaca. Batang umum teal transparan, batang terpilih teal solid, latar garis pilih ringan; grid putus-putus. Skala kiri 0/setengah/maksimum, tanggal di bawah, kartu detail mint, total dan rata-rata di atas. Tidak memakai kurva halus yang mengarang nilai di antara tanggal. Privasi menyembunyikan ringkasan dan grafik sekaligus.

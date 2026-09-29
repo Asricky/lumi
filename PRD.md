@@ -1,6 +1,6 @@
 # Lumi — Product Requirements Document
 
-Versi produk: **v7 / 1.0.7** · Revisi: **26 September 2026**
+Versi produk: **v8 / 1.0.8** · Revisi: **29 September 2026**
 Platform: Android 10+ · Bahasa: Indonesia · Pemilik repo: Asricky
 
 Dokumen ini menjadi spesifikasi produk aktif. Arah tampilan dan komponen ada di [DESIGN.md](DESIGN.md), petunjuk instalasi di [README.md](README.md).
@@ -271,3 +271,13 @@ README menjadi halaman ringkas berisi identitas Lumi, link APK utama, catatan ve
 9. Database, package, sertifikat, dan nomor versi berurutan tetap dipertahankan. README, CHANGELOG, panduan, serta dokumentasi desain diperbarui setiap rilis.
 
 Validasi rilis v7: 151 pengujian lulus (0 gagal/skip); lint 0 error, 14 peringatan, 6 informasi; APK 1.0.7 berlabel Lumi memakai sertifikat yang sama dengan v6. Tidak ada migrasi database. Verifikasi preview PDF dan pemilih lokasi simpan pada HP fisik belum dilakukan.
+
+
+## Pembaruan v8 · Kalkulator dan grafik pengeluaran
+
+- Kalkulator menyimpan ekspresi tanpa pemisah ribuan; koma adalah desimal pada editor, titik hanya format visual. Setiap operand dan hasil dikelompokkan per tiga digit. Offset mapping menjaga kursor dan seleksi ketika pemisah ditambah otomatis. Tempelan menerima pengelompokan Indonesia yang valid; `1.5` ditolak agar tidak berubah diam-diam menjadi 15 atau 1.500. Gunakan `1,5` untuk satu koma lima.
+- Keypad memasukkan karakter pada posisi kursor, hapus menghilangkan seleksi atau satu karakter sebelumnya. Setelah hasil, operator melanjutkan dari hasil dan angka memulai perhitungan baru. Tombol kekayaan bersih menjadikan total saat ini sebagai nilai awal dan tidak mengubah data. Batas 250 karakter dan pembagian nol tetap divalidasi. Pertumbuhan memakai format nominal besar tanpa pemotongan ke batas Long; simulasi tetap asumsi, bukan janji hasil.
+- Tren pengeluaran memakai batang per hari aktual dalam bulan terpilih. Total dan rata-rata dihitung dari seluruh hari aktual termasuk hari tanpa pengeluaran; bulan mendatang menampilkan empty state. Skala atas dibulatkan ke kelipatan 1/2/5/10 dan tidak memotong nilai puncak. Semua titik nol ditampilkan pada baseline, bukan dibuat menjadi batang bernilai semu.
+- Ketuk area batang atau slider aksesibel untuk memilih tanggal. Hari terpilih mempunyai warna penekanan, tanggal lengkap, nominal penuh, serta label puncak jika sama dengan maksimum positif. Periode dan filter transaksi mengikuti engine arus kas sebelumnya. Mode privasi menghilangkan nominal, ringkasan, grafik, serta pemilih nominal dari semantics.
+
+Validasi v8: 156 pengujian lulus tanpa gagal/skip; lint 0 error, 14 peringatan. APK 1.0.8 tetap memakai package dan sertifikat yang sama. Rendering kalkulator 320 dp, grafik 393 dp, tempelan, hasil lanjutan, pembagian nol, navigasi kembali, dan privasi lulus. Belum diuji pada HP fisik.

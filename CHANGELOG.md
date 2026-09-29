@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.8 — 2026-09-29
+
+- Kalkulator diperbarui dengan panel perhitungan/hasil, keypad yang lebih rapi, serta format Indonesia: titik ribuan dan koma desimal pada input, hasil, dan simulasi pertumbuhan.
+- Tempel nominal seperti `1.500.000,50`, edit pada posisi kursor, hapus pilihan, atau lanjutkan operasi dari hasil. Format tempelan ambigu ditolak dengan pesan yang jelas; kalkulator tidak mengubah saldo.
+- Grafik pengeluaran Kalender memakai batang harian, skala otomatis, total periode, rata-rata, dan rincian tanggal terpilih. Ketuk batang atau gunakan pemilih tanggal yang aksesibel.
+- Mode privasi menyembunyikan seluruh angka/grafik; hari mendatang tidak ditampilkan sebagai pengeluaran aktual.
+- Validasi: 156 pengujian lulus; lint tanpa error (14 peringatan). Tampilan diuji melalui rendering native pada lebar 320/393 dp; belum diuji pada HP fisik.
+
 ## 1.0.7 — 2026-09-26
 
 - Notifikasi transaksi, budget, dan pengingat menampilkan logo Lumi berwarna, aksen teal, serta judul yang jelas. Privasi layar kunci tetap dijaga.

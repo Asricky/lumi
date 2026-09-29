@@ -150,3 +150,10 @@ Arus kas tidak mencakup transfer sendiri, top-up e-wallet, koreksi saldo, dan ca
 Beranda, Rencana, dan Saran Lumi menampilkan rekomendasi sementara bila ada rekening aktif. Saldo rekening tercatat dibagi sampai jadwal 25/1 berikutnya setelah menyisihkan cadangan terbesar dari profil/rencana lama dan transportasi. Cadangan ditahan penuh sampai dikonfirmasi, sehingga rekomendasi dapat lebih kecil daripada dana yang sebenarnya tersedia. Belanja hari ini mengurangi sisa rekomendasi. Perbarui saldo dan rencana jika pemasukan terlambat atau tagihan sudah dibayar. Saran tidak mengubah rencana tersimpan.
 
 Logo Lumi berwarna kini tampil pada notifikasi transaksi, budget, dan pengingat. Ikon status bar tetap monokrom sesuai Android; tampilan besar/kecil mengikuti perangkat. Contoh notifikasi tersedia di Saran Lumi → Pengingat & ikon Lumi.
+
+
+## Kalkulator dan grafik v8
+
+Kalkulator menampilkan `1.500.000,50`: titik ribuan, koma desimal. Tempel angka dengan format tersebut, atau ketik tanpa titik; pengelompokan tampil otomatis. Persen berarti dibagi 100, jadi `1.500.000 × 10% = 150.000`. Operator setelah hasil melanjutkan perhitungan; angka memulai hitungan baru. Tombol kekayaan bersih mengganti ekspresi dengan total saat ini sebagai nilai awal. Tidak ada perubahan saldo.
+
+Pada Kalender, grafik Tren Pengeluaran menampilkan batang setiap hari aktual. Ketuk batang atau geser tanggal untuk rincian. Rata-rata memakai semua hari aktual pada periode, termasuk hari bernilai nol. Mode sembunyikan nominal juga menutup grafik dan statistiknya.

@@ -15,28 +15,27 @@
 <!-- LATEST_RELEASE_START -->
 ## Download aplikasi
 
-[**Download Lumi - app-debug-v7.apk**](https://github.com/Asricky/lumi/raw/refs/heads/main/app/build/outputs/apk/debug/app-debug-v7.apk)
+[**Download Lumi - app-debug-v8.apk**](https://github.com/Asricky/lumi/raw/refs/heads/main/app/build/outputs/apk/debug/app-debug-v8.apk)
 
-**v7 / 1.0.7** &nbsp; | &nbsp; Android 10+ &nbsp; | &nbsp; [Semua versi](app/build/outputs/apk/debug)
+**v8 / 1.0.8** &nbsp; | &nbsp; Android 10+ &nbsp; | &nbsp; [Semua versi](app/build/outputs/apk/debug)
 
 ### Yang baru
 
-- Notifikasi transaksi, budget, dan pengingat menampilkan logo Lumi berwarna, aksen teal, serta judul yang jelas. Privasi layar kunci tetap dijaga.
-- Saran belanja sementara tersedia di Beranda, Rencana, dan Saran Lumi saat rencana belum ada atau berakhir. Perhitungan memakai saldo rekening tercatat, menahan cadangan, dan tidak menambahkan perkiraan gaji.
-- Menu **Laporan bulanan** di Lainnya dan Kalender: preview PDF, perbesar halaman, navigasi halaman, dan simpan file melalui pemilih lokasi Android.
-- PDF A4 berisi ringkasan masuk/keluar, kategori, kalender, evaluasi budget, rekomendasi bulan berikutnya, dan daftar transaksi. Lumi memberi teguran berdasarkan pelampauan budget; data belum ditinjau ditandai sementara.
-- Preview dan unduhan memakai snapshot PDF yang sama. Nominal disamarkan secara default dan bisa disertakan secara eksplisit.
-- Validasi: 151 pengujian lulus; lint 0 error, 14 peringatan. Tata letak A4 dan navigasi diuji secara otomatis; preview PDF serta pemilih lokasi simpan belum diverifikasi pada HP fisik.
+- Kalkulator diperbarui dengan panel perhitungan/hasil, keypad yang lebih rapi, serta format Indonesia: titik ribuan dan koma desimal pada input, hasil, dan simulasi pertumbuhan.
+- Tempel nominal seperti `1.500.000,50`, edit pada posisi kursor, hapus pilihan, atau lanjutkan operasi dari hasil. Format tempelan ambigu ditolak dengan pesan yang jelas; kalkulator tidak mengubah saldo.
+- Grafik pengeluaran Kalender memakai batang harian, skala otomatis, total periode, rata-rata, dan rincian tanggal terpilih. Ketuk batang atau gunakan pemilih tanggal yang aksesibel.
+- Mode privasi menyembunyikan seluruh angka/grafik; hari mendatang tidak ditampilkan sebagai pengeluaran aktual.
+- Validasi: 156 pengujian lulus; lint tanpa error (14 peringatan). Tampilan diuji melalui rendering native pada lebar 320/393 dp; belum diuji pada HP fisik.
 
 <details>
 <summary>Lokasi file &amp; verifikasi unduhan</summary>
 
-File: `app/build/outputs/apk/debug/app-debug-v7.apk`
+File: `app/build/outputs/apk/debug/app-debug-v8.apk`
 
 SHA-256:
 
 ```text
-6AC4D3EF9C52AE03A3F21409E2CD8ECC1DF166EF1B6F81C8E2A096C8CE3F0081
+0262FB776866FB54B4DEB8E7B15FBB7A275FBD1A71A133AA476033DDE808AA46
 ```
 
 </details>
