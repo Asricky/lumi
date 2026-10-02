@@ -36,6 +36,18 @@ class NeedsReviewViewModel(private val app: LuxWalletApp) : ViewModel() {
     val busy = MutableStateFlow(false)
     val error = MutableStateFlow<String?>(null)
     val message = MutableStateFlow<String?>(null)
+    fun retry(id: Long, onDone: () -> Unit) {
+        if (busy.value) return
+        busy.value = true; error.value = null; message.value = null
+        viewModelScope.launch {
+            try {
+                message.value = app.transactionRepository.retryFailedNotification(id, app.parserRegistry)
+                onDone()
+            } catch (e: kotlinx.coroutines.CancellationException) { throw e }
+            catch (_: Exception) { error.value = "Pesan belum berhasil dibaca ulang. Coba lagi." }
+            finally { busy.value = false }
+        }
+    }
     fun dismiss(keys: List<String>, onDone: () -> Unit) {
         if (busy.value) return
         busy.value = true; error.value = null; message.value = null

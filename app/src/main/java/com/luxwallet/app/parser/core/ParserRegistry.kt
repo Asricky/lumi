@@ -34,6 +34,6 @@ class ParserRegistry(
     }
 
     companion object {
-        const val PARSER_VERSION = 3
+        const val PARSER_VERSION = 4
     }
 }

@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.0.9 — 2026-10-02
+
+- Beranda dan Rencana menampilkan **Sisa budget hari ini**, budget awal, pemakaian, serta cadangan transportasi terpisah. Konfirmasi saldo tetap menghitung belanja sebelum konfirmasi sebagai pemakaian hari ini tanpa memotong saldo dua kali.
+- Transportasi dijelaskan sebagai hari perjalanan × tarif, dikurangi bagian yang sudah dibayar hari ini. Top-up dompet sendiri bukan pengeluaran; pembayaran perjalanan memakai cadangan transportasi.
+- Catatan tersedia pada rekening, investasi, aset lain, dan utang. Aset manual dapat dihapus permanen; menghapus rekening dari aset aktif tetap menjaga riwayat transaksi. Migrasi database mempertahankan data lama.
+- Kolom nominal nol menjadi placeholder sehingga angka baru tidak tersambung dengan nol bawaan. Kalkulator memakai hasil yang lebih jelas tanpa tulisan “Tekan =”.
+- Transfer masuk SeaBank dengan format “kamu menerima transfer saldo senilai Rp647.500” terbaca sebagai pemasukan. Pesan lama yang gagal bisa dibaca ulang dari Tinjauan dengan konfirmasi; pesan sebelum koreksi saldo tidak dimasukkan ulang.
+- Lumi tidak lagi bingung terus karena tinjauan lama saat budget aktif masih aman. Jumlah catatan yang perlu diperiksa tetap terlihat di Beranda.
+- Validasi: 175 pengujian lulus tanpa gagal/skip; lint 0 error, 14 peringatan. Migrasi Room v1–v5 ke v6, pemrosesan SeaBank, konfirmasi saldo, dan alur catatan/hapus aset diuji. Render layar kecil diperiksa; belum diuji pada HP fisik.
+
+
 ## 1.0.8 — 2026-09-29
 
 - Kalkulator diperbarui dengan panel perhitungan/hasil, keypad yang lebih rapi, serta format Indonesia: titik ribuan dan koma desimal pada input, hasil, dan simulasi pertumbuhan.

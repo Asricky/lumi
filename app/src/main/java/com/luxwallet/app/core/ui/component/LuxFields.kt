@@ -45,7 +45,7 @@ import androidx.compose.ui.unit.dp
 }
 
 @Composable fun MoneyField(label: String, value: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
-    OutlinedTextField(value, { raw -> rupiahDigits(raw)?.let(onChange) }, modifier.fillMaxWidth(), label = { Text(label) },
+    OutlinedTextField(value.takeUnless { it == "0" }.orEmpty(), { raw -> rupiahDigits(raw)?.let { onChange(it.trimStart('0').ifEmpty { if (it.isEmpty()) "" else "0" }) } }, modifier.fillMaxWidth(), label = { Text(label) }, placeholder = { Text("0") },
         prefix = { Text("Rp ") }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         visualTransformation = RupiahTransformation, singleLine = true, shape = RoundedCornerShape(16.dp))
 }

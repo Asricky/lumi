@@ -157,3 +157,16 @@ Logo Lumi berwarna kini tampil pada notifikasi transaksi, budget, dan pengingat.
 Kalkulator menampilkan `1.500.000,50`: titik ribuan, koma desimal. Tempel angka dengan format tersebut, atau ketik tanpa titik; pengelompokan tampil otomatis. Persen berarti dibagi 100, jadi `1.500.000 × 10% = 150.000`. Operator setelah hasil melanjutkan perhitungan; angka memulai hitungan baru. Tombol kekayaan bersih mengganti ekspresi dengan total saat ini sebagai nilai awal. Tidak ada perubahan saldo.
 
 Pada Kalender, grafik Tren Pengeluaran menampilkan batang setiap hari aktual. Ketuk batang atau geser tanggal untuk rincian. Rata-rata memakai semua hari aktual pada periode, termasuk hari bernilai nol. Mode sembunyikan nominal juga menutup grafik dan statistiknya.
+
+
+## Pembaruan v9: budget, transportasi, aset, dan SeaBank
+
+Buka **Rencana → Konfirmasi saldo & perbarui**. Isi saldo asli saat ini, bukan saldo sebelum berbelanja. Tagihan diisi hanya yang belum dibayar. Belanja yang sudah tercatat hari ini tetap mengurangi budget hari ini, tetapi tidak dipotong lagi dari saldo. Contohnya saldo sekarang Rp800.000, tadi belanja Rp200.000, tersisa dua hari tanpa cadangan lain: budget Rp500.000 dan **sisa hari ini Rp300.000**. Bila transaksi lama baru masuk setelah konfirmasi, periksa lalu konfirmasi saldo ulang.
+
+Cadangan transportasi dihitung dari hari perjalanan sampai sehari sebelum gajian, dikalikan tarif (misalnya Rp6.000), dikurangi kebutuhan hari ini yang telah dibayar. Pilih kategori **Transportasi rutin** untuk pembayaran perjalanan. Top-up antar rekening/dompet milik sendiri dicatat sebagai transfer, bukan belanja. Rincian alokasi menunjukkan berapa cadangan tersisa; kelebihan dari cadangan memakai budget bebas.
+
+Ketuk aset untuk menambah **Catatan aset**. Mengubah catatan saja tidak mengoreksi saldo. **Hapus** pada aset manual/utang bersifat permanen dan tidak mencatat transaksi pembayaran; pada rekening, penghapusan berlaku untuk daftar aktif agar riwayat tetap utuh. Rekening dapat diaktifkan kembali melalui Kelola rekening. Aset yang dahulu diarsipkan tersedia di **Aset yang disembunyikan**.
+
+Untuk pesan SeaBank lama yang gagal: buka **Tinjau → Coba baca ulang** pada pesan terkait. Lanjutkan hanya jika belum dicatat manual. Lumi memakai pesan yang tersimpan dan memprosesnya sekali. Pesan sebelum koreksi saldo tidak ditambahkan ulang; periksa riwayat dan saldo sebelum mencatat manual. Transfer baru dengan format “kamu menerima transfer saldo senilai Rp647.500” kini dikenali sebagai pemasukan.
+
+Ikon Lumi otomatis mengikuti kondisi budget dan kejadian baru, tanpa terus bingung akibat tinjauan lama. Tinjauan tetap tersedia melalui jumlah catatan di Beranda. Jika memilih ekspresi manual di pengaturan, ubah kembali ke **Otomatis** untuk mengikuti kondisi keuangan.

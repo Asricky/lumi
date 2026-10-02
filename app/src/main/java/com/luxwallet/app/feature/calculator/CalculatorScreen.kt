@@ -67,8 +67,8 @@ import com.luxwallet.app.parser.core.AmountParser
                         isError = error != null)
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text("Hasil", style = MaterialTheme.typography.labelMedium)
-                        Text(result?.let { CalculatorFormatting.display(it) } ?: "Tekan =", Modifier.weight(1f), textAlign = TextAlign.End,
-                            style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
+                        Text(result?.let { CalculatorFormatting.display(it) } ?: "0", Modifier.weight(1f), textAlign = TextAlign.End,
+                            style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
                     }
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall) }
                 }
@@ -77,7 +77,7 @@ import com.luxwallet.app.parser.core.AmountParser
                 focus.clearFocus()
                 val value = total.toString()
                 expression = TextFieldValue(value, TextRange(value.length)); result = null; error = null
-            }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("Pakai kekayaan bersih sebagai nilai awal") }
+            }, Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) { Text("Gunakan kekayaan bersih") }
             listOf(listOf("C", "(", ")", "⌫"), listOf("7", "8", "9", "÷"), listOf("4", "5", "6", "×"),
                 listOf("1", "2", "3", "−"), listOf("0", ",", "%", "+")).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { row.forEach { key ->
@@ -108,7 +108,7 @@ import com.luxwallet.app.parser.core.AmountParser
                 catch (e: Exception) { error = e.message ?: "Periksa perhitungan" } }, Modifier.fillMaxWidth().heightIn(min = 54.dp), shape = RoundedCornerShape(18.dp)) {
                 Text("=", style = MaterialTheme.typography.headlineSmall)
             }
-            Text("Contoh: 1.500.000,50 · Persen berarti ÷100. Perhitungan tidak mengubah saldo.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Persen = ÷100 · Perhitungan tidak mengubah saldo.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             MoneyField("Modal awal", initial, { initial = it })
             MoneyField("Setoran tiap akhir bulan", monthly, { monthly = it })

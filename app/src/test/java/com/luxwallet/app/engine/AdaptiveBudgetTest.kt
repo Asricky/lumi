@@ -68,4 +68,10 @@ class AdaptiveBudgetTest {
         assertEquals(LumiMood.PROUD, LumiCondition.evaluate(emptyList(), emptyList(), emptySet(), emptySet(), listOf(goal), now, day))
         assertEquals(LumiMood.CALM, LumiCondition.evaluate(emptyList(), listOf(income), emptySet(), emptySet(), emptyList(), now + 7200000, day))
     }
+    @Test fun safeActivePlanIsNotConfusedByReviewBacklog() {
+        val reviewed = tx(amount = 1000).copy(reviewStatus = ReviewStatus.NEEDS_REVIEW)
+        assertEquals(LumiMood.HAPPY, LumiCondition.evaluate(listOf(plan()), listOf(reviewed), emptySet(), emptySet(), emptyList(), reviewed.transactionTime + 1000, day))
+        assertEquals(LumiMood.CALM, LumiCondition.evaluate(emptyList(), listOf(reviewed), emptySet(), emptySet(), emptyList(), reviewed.transactionTime + 86400001, day.plusDays(1)))
+    }
+
 }

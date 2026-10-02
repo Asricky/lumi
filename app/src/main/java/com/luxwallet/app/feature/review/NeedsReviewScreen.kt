@@ -23,6 +23,7 @@ import com.luxwallet.app.core.ui.luxViewModel
     val message by vm.message.collectAsState()
     var selection by rememberSaveable { mutableStateOf(emptyList<String>()) }
     var deleting by rememberSaveable { mutableStateOf<List<String>?>(null) }
+    var retrying by rememberSaveable { mutableStateOf<Long?>(null) }
     val selected = selection.filter { it in state.keys }
     val hidden = LocalAmountsHidden.current
     val dateFormat = remember { java.time.format.DateTimeFormatter.ofPattern("d MMM, HH:mm", java.util.Locale("id", "ID")).withZone(java.time.ZoneId.systemDefault()) }
@@ -66,12 +67,22 @@ import com.luxwallet.app.core.ui.luxViewModel
                 }, dateFormat.format(java.time.Instant.ofEpochMilli(item.postedAt)), "Belum dikenali · belum masuk saldo",
                     privateReviewMessage(reviewMessage(listOf(item), "Pesan asli tidak tersedia."), hidden),
                     selected = key in selected, enabled = !busy, onSelect = { toggle(key) }, onReview = onManual,
-                    onDelete = { deleting = listOf(key) }, reviewLabel = "Catat manual")
+                    onDelete = { deleting = listOf(key) }, reviewLabel = "Catat manual") {
+                    TextButton({ retrying = item.id }, enabled = !busy) { Text("Coba baca ulang") }
+                }
             }
             if (state.isLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             else if (state.keys.isEmpty()) item { Text("Semua sudah ditinjau.") }
         }
     }
+    retrying?.let { id -> AlertDialog(onDismissRequest = { if (!busy) retrying = null },
+        title = { Text("Baca ulang pesan ini?") },
+        text = { Column {
+            Text("Gunakan jika transaksi ini belum kamu catat manual. Jika terbaca, Lumi akan memprosesnya ke riwayat dan saldo. Jangan lanjut jika nominalnya sudah masuk dalam saldo yang kamu koreksi.")
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+        } },
+        confirmButton = { TextButton({ vm.retry(id) { retrying = null } }, enabled = !busy) { Text("Belum dicatat, baca ulang") } },
+        dismissButton = { TextButton({ retrying = null }, enabled = !busy) { Text("Batal") } }) }
     deleting?.let { snapshot -> AlertDialog(onDismissRequest = { if (!busy) deleting = null },
         title = { Text(if (snapshot.size == 1) "Hapus dari daftar tinjauan?" else "Hapus ${snapshot.size} catatan terpilih?") },
         text = { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

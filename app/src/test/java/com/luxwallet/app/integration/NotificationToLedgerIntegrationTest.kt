@@ -350,17 +350,20 @@ class NotificationToLedgerIntegrationTest {
         assertEquals(category, db.transactionDao().getById(id)!!.categoryId)
         assertEquals(14999997L, accountRepository.getById(bcaAccountId)!!.currentEstimatedBalance)
     }
-    @Test fun assetCrudArchiveAndRestorePreserveHistoryAndBackupRows() = runBlocking {
+    @Test fun assetNotesDeleteAndLegacyRestorePreserveLedger() = runBlocking {
         val assets = com.luxwallet.app.data.AssetRepository(db.assetDao())
         val asset = com.luxwallet.app.core.database.entity.AssetEntity(name = "Emas", assetClass = com.luxwallet.app.core.model.AssetClass.EMAS, currentValue = 100000, updatedAt = 1)
         val id = assets.upsert(asset)
-        assets.upsert(asset.copy(id = id, currentValue = 200000))
+        assets.upsert(asset.copy(id = id, currentValue = 200000, notes = "Simpan sampai 2028"))
+        assertEquals("Simpan sampai 2028", db.assetDao().getAllOnce().single().notes)
         assertEquals(200000L, assets.observeTotalValue().first())
-        assets.delete(asset.copy(id = id))
+        db.assetDao().setArchived(id, true)
         assertEquals(0L, assets.observeTotalValue().first())
         assertTrue(db.assetDao().getAllOnce().single().isArchived)
         assets.restore(id)
         assertEquals(200000L, assets.observeTotalValue().first())
+        assets.delete(db.assetDao().getAllOnce().single())
+        assertTrue(db.assetDao().getAllOnce().isEmpty())
         ingestNotification(SourceApp.MYBCA, "Catatan Finansial", "Pengeluaran sebesar IDR 3.00 di kategori Belanja Bulanan.", 10000)
         transactionRepository.updateAccountValue(bcaAccountId, "BCA pribadi", 14999997)
         accountRepository.setActive(bcaAccountId, false)
@@ -417,6 +420,46 @@ class NotificationToLedgerIntegrationTest {
         assertEquals(ParseStatus.FAILED, db.notificationObservationDao().getById(obs)!!.parseStatus)
         assertEquals(14999997L, accountRepository.getById(bcaAccountId)!!.currentEstimatedBalance)
         assertEquals(1, db.ledgerEntryDao().getAllOnce().size)
+    }
+
+    @Test fun actualSeaBankIncomingCreditsAmountOnceNotAccountNumber() = runBlocking {
+        val body = "kamu menerima transfer saldo senilai Rp647.500 ke rekening 3422. dst."
+        repeat(2) { ingestNotification(SourceApp.SEABANK, "TRANSFER MASUK", body, 10000, "incoming-1") }
+        val tx = db.transactionDao().getAllOnce().single()
+        assertEquals(647500L, tx.amount)
+        assertEquals(com.luxwallet.app.core.model.TransactionDirection.IN, tx.direction)
+        assertEquals(8147500L, accountRepository.getById(seabankAccountId)!!.currentEstimatedBalance)
+        assertEquals(647500L, db.ledgerEntryDao().getAllOnce().single().deltaAmount)
+    }
+    @Test fun noteOnlyEditDoesNotResetBalanceAfterNewNotification() = runBlocking {
+        ingestNotification(SourceApp.MYBCA, "Catatan Finansial", "Pengeluaran sebesar IDR 3.00 di kategori Belanja Bulanan.", 10000)
+        transactionRepository.updateAccountValue(bcaAccountId, "Belanja", null, "Uang operasional")
+        assertEquals(14999997L, accountRepository.getById(bcaAccountId)!!.currentEstimatedBalance)
+        assertEquals("Uang operasional", accountRepository.getById(bcaAccountId)!!.notes)
+        assertEquals(1, db.transactionDao().getAllOnce().size)
+        assertEquals(1, db.ledgerEntryDao().getAllOnce().size)
+    }
+    private suspend fun failedSeaBank(): Long = notificationRepository.insertIfNew(NotificationObservationEntity(
+        sourceApp = SourceApp.SEABANK, packageName = "id.co.bankbkemobile.digitalbank", notificationKey = "old-incoming",
+        title = "TRANSFER MASUK", text = "kamu menerima transfer saldo senilai Rp647.500 ke rekening 3422.",
+        bigText = null, subText = null, textLines = null,
+        postedAt = 10000, receivedAt = 10000, rawPayloadHash = "old-incoming", parserVersion = 3, parseStatus = ParseStatus.FAILED))!!
+    @Test fun explicitRetryOfFailedIncomingIsAtomicAndIdempotent() = runBlocking {
+        val id = failedSeaBank()
+        repeat(2) { transactionRepository.retryFailedNotification(id, registry) }
+        assertEquals(1, db.transactionDao().getAllOnce().size)
+        assertEquals(8147500L, accountRepository.getById(seabankAccountId)!!.currentEstimatedBalance)
+        assertEquals(ParseStatus.PARSED, db.notificationObservationDao().getById(id)!!.parseStatus)
+        assertEquals(4, db.notificationObservationDao().getById(id)!!.parserVersion)
+    }
+    @Test fun retryNeverAddsHistoricalIncomeAfterBalanceWasCorrected() = runBlocking {
+        val id = failedSeaBank()
+        transactionRepository.updateAccountValue(seabankAccountId, "SeaBank", 8147500)
+        val count = db.transactionDao().getAllOnce().size
+        transactionRepository.retryFailedNotification(id, registry)
+        assertEquals(count, db.transactionDao().getAllOnce().size)
+        assertEquals(8147500L, accountRepository.getById(seabankAccountId)!!.currentEstimatedBalance)
+        assertEquals(ParseStatus.FAILED, db.notificationObservationDao().getById(id)!!.parseStatus)
     }
 
 }

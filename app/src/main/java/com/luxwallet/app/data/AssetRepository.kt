@@ -9,7 +9,7 @@ class AssetRepository(private val assetDao: AssetDao) {
     fun observeTotalValue(): Flow<Long> = assetDao.observeTotalValue()
     suspend fun upsert(asset: AssetEntity): Long =
         if (asset.id == 0L) assetDao.insert(asset) else { assetDao.update(asset); asset.id }
-    suspend fun delete(asset: AssetEntity) = assetDao.setArchived(asset.id, true)
+    suspend fun delete(asset: AssetEntity) = assetDao.delete(asset)
     suspend fun restore(id: Long) = assetDao.setArchived(id, false)
     fun observeArchived() = assetDao.observeArchived()
 }

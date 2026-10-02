@@ -30,8 +30,8 @@ val planDateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy
     var showDetails by rememberSaveable { mutableStateOf(false) }
     var editing by rememberSaveable { mutableStateOf(false) }
     var cash by rememberSaveable { mutableStateOf("") }
-    var bills by rememberSaveable { mutableStateOf("0") }
-    var buffer by rememberSaveable { mutableStateOf("0") }
+    var bills by rememberSaveable { mutableStateOf("") }
+    var buffer by rememberSaveable { mutableStateOf("") }
     var business by rememberSaveable { mutableStateOf("1000000") }
     var investment by rememberSaveable { mutableStateOf("1500000") }
     var pay25 by rememberSaveable { mutableStateOf("") }
@@ -50,7 +50,8 @@ val planDateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy
     fun begin() {
         val previous = state.latest
         cash = "" // Always confirm actual liquid money; never infer Rp3.2m or forecast income.
-        bills = "0"; buffer = "0"
+        bills = ((previous?.bills ?: 0) - (state.status?.billsSpent ?: 0)).coerceAtLeast(0).takeIf { it > 0 }?.toString().orEmpty()
+        buffer = previous?.buffer?.takeIf { it > 0 }?.toString().orEmpty()
         business = (previous?.business ?: 1_000_000).toString()
         investment = (previous?.investment ?: 1_500_000).toString()
         daily = transport.dailyAmount.toString(); weekdays = transport.weekdaysOnly
@@ -80,8 +81,13 @@ val planDateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy
                     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         Text(if (status.expired) "Rencana berakhir" else "${adaptive?.daysRemaining ?: 0} hari sampai gajian", style = MaterialTheme.typography.titleLarge)
                         Text(status.plan.end.format(planDateFormat), style = MaterialTheme.typography.bodyMedium)
-                        Text("Aman dibelanjakan hari ini", style = MaterialTheme.typography.labelLarge)
+                        Text("Sisa budget hari ini", style = MaterialTheme.typography.labelLarge)
                         Text(if (status.expired) "Perbarui rencana" else money(adaptive?.safeToSpend ?: 0), style = MaterialTheme.typography.headlineLarge)
+                        if (!status.expired) {
+                            Text("Budget ${money(status.dailyBudget)} − terpakai ${money(status.spentToday)}", style = MaterialTheme.typography.bodyMedium)
+                            Text("Sisa dibatasi dana bebas yang tersedia. Transportasi dan tagihan memakai cadangan terpisah.", style = MaterialTheme.typography.bodySmall)
+                        }
+                        message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         if (!hidden && !status.expired) {
                             LinearProgressIndicator(progress = { (status.usedPercent / 100).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
                             Text("${status.usedPercent.toInt()}% budget hari ini terpakai", style = MaterialTheme.typography.bodySmall)
@@ -113,10 +119,13 @@ val planDateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy
                     Text("Tagihan: ${money(status.plan.bills)} · Penyangga: ${money(status.plan.buffer)}")
                     Text("Modal bisnis: ${money(status.plan.business)}")
                     Text("Investasi: ${money(status.plan.investment)}")
-                    Text("Transportasi sampai gajian: ${money(status.plan.transportReserve)}")
-                    Text("Dana bebas = saldo − seluruh alokasi. Target harian = dana bebas ÷ ${status.plan.days} hari. Sisa hari ini dibatasi dana bebas yang masih ada.")
+                    Text("Transportasi: ${status.plan.transportDays} hari × ${money(status.plan.transportDaily)} = ${money(status.plan.transportGross)}")
+                    Text("Sudah dibayar sebelum konfirmasi: ${money(status.plan.transportPaidBeforeCapture)}")
+                    Text("Cadangan awal tersisa: ${money(status.plan.transportReserve)} · dipakai sejak konfirmasi: ${money(status.transportSpent)}")
+                    Text("Cadangan transportasi sekarang: ${money((status.plan.transportReserve - status.transportSpent).coerceAtLeast(0))}")
+                    Text("Budget harian = (saldo − alokasi tersisa + belanja hari ini sebelum konfirmasi) ÷ ${status.plan.days} hari. Belanja sebelum konfirmasi: ${money(status.plan.spentBeforeCapture)}. Sisa hari ini = budget − seluruh belanja hari ini, dibatasi dana bebas.")
                     Text("Tagihan terencana dan Transportasi rutin menggunakan cadangannya terlebih dahulu. Kelebihan masuk pemakaian budget bebas. Top-up sendiri tidak dihitung sebagai belanja.")
-                    Text("Hari pertama dihitung mulai waktu konfirmasi saldo. Jika saldo dikoreksi atau ada transaksi lama yang baru masuk, konfirmasi saldo lagi.", style = MaterialTheme.typography.bodySmall)
+                    Text("Saldo sekarang sudah mencerminkan belanja sebelumnya. Belanja itu dihitung untuk budget hari ini, bukan dipotong lagi dari saldo. Jika ada catatan lama yang baru masuk, konfirmasi saldo lagi.", style = MaterialTheme.typography.bodySmall)
                     Text("Jika dana bisnis atau investasi sudah keluar dari saldo likuid, konfirmasi saldo lagi dan isi hanya bagian alokasi yang masih tersisa.", style = MaterialTheme.typography.bodySmall)
                 } } }
                 item {
@@ -142,15 +151,22 @@ val planDateFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMMM yyyy
             item { MoneyField("Dana penyangga yang tidak dibelanjakan", buffer, { buffer = it }) }
             item { MoneyField("Lindungi untuk modal bisnis", business, { business = it }) }
             item { MoneyField("Lindungi untuk investasi", investment, { investment = it }); Text("Target bulanan Rp2,5 juta adalah rencana. Sesuaikan bagian yang masih ada dalam saldo ini; tidak dipotong lagi otomatis saat gajian.", style = MaterialTheme.typography.bodySmall) }
-            item { MoneyField("Transportasi per hari", daily, { daily = it }); ChoiceField("Hari perjalanan", if (weekdays) "Senin–Jumat" else "Setiap hari", listOf("Senin–Jumat", "Setiap hari"), { weekdays = it == 0 }) }
+            item {
+                MoneyField("Transportasi per hari", daily, { daily = it })
+                ChoiceField("Hari perjalanan", if (weekdays) "Senin–Jumat" else "Setiap hari", listOf("Senin–Jumat", "Setiap hari"), { weekdays = it == 0 })
+                val preview = com.luxwallet.app.engine.PaydayMath.capture(PaydayPlan(System.currentTimeMillis(), state.today.toEpochDay(), payday, 0,
+                    transportDaily = daily.toLongOrNull() ?: 0, weekdaysOnly = weekdays), state.transactions, state.transportIds, state.billIds)
+                Text("${preview.transportDays} hari perjalanan × ${money(preview.transportDaily)} = ${money(preview.transportGross)}. Sudah dibayar hari ini: ${money(preview.transportPaidBeforeCapture)}. Sisihkan ${money(preview.transportReserve)} lagi.", style = MaterialTheme.typography.bodySmall)
+                Text("Dihitung mulai hari ini sampai sehari sebelum pemasukan. Top-up dompet sendiri hanya pindah uang. Catat pembayaran perjalanan sebagai Transportasi rutin agar mengurangi cadangan, bukan belanja bebas. Kelebihan dari cadangan masuk belanja bebas.", style = MaterialTheme.typography.bodySmall)
+            }
             item { MoneyField("Perkiraan pemasukan tanggal 25 (opsional)", pay25, { pay25 = it }) }
             item { MoneyField("Perkiraan pemasukan tanggal 1 (opsional)", pay1, { pay1 = it }) }
             item {
                 error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                 message?.let { Text(it) }
                 Button(enabled = !saving, modifier = Modifier.fillMaxWidth(), onClick = {
-                    val values = listOf(cash, bills, buffer, business, investment, daily).map { it.toLongOrNull() }
-                    if (values.any { it == null }) error = "Isi semua alokasi dengan angka. Gunakan 0 jika tidak ada."
+                    val values = listOf(cash, bills, buffer, business, investment, daily).mapIndexed { index, value -> if (index > 0 && value.isBlank()) 0L else value.toLongOrNull() }
+                    if (values.any { it == null }) error = "Isi saldo yang tersedia. Alokasi kosong dianggap nol."
                     else {
                         val plan = PaydayPlan(System.currentTimeMillis(), state.today.toEpochDay(), payday, values[0]!!,
                             values[1]!!, values[2]!!, values[3]!!, values[4]!!, values[5]!!, weekdays, pay25.toLongOrNull() ?: 0, pay1.toLongOrNull() ?: 0)

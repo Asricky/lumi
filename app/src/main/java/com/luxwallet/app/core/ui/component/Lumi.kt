@@ -30,10 +30,10 @@ fun lumiMood(status: PaydayStatus?): LumiMood = when {
     status.dailyBudget <= 0 -> LumiMood.CALM
     else -> budgetMood(status.usedPercent)
 }
-/** Evidence is ordered: serious budget risk, review, spike, recent income, then daily progress. */
+/** Evidence is ordered: serious budget risk, recent events, then daily progress. Review only guides an inactive plan. */
 fun companionMood(status: PaydayStatus?, review: Boolean, spike: Boolean, income: Boolean, completed: Boolean = false): LumiMood = when {
     status != null && !status.expired && (status.freeRemaining < 0 || status.usedPercent >= 75 || (status.dailyBudget <= 0 && status.spentToday > 0)) -> lumiMood(status)
-    review -> LumiMood.CURIOUS
+    review && (status == null || status.expired) -> LumiMood.CURIOUS
     spike -> LumiMood.SHOCKED
     income -> LumiMood.EXCITED
     completed -> LumiMood.PROUD

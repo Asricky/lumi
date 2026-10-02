@@ -35,7 +35,7 @@ class LuxWalletApp : Application(), Configuration.Provider {
 
     val database: LuxDatabase by lazy {
         Room.databaseBuilder(this, LuxDatabase::class.java, LuxDatabase.DATABASE_NAME)
-            .addMigrations(LuxDatabase.MIGRATION_1_2, LuxDatabase.MIGRATION_2_3, LuxDatabase.MIGRATION_3_4, LuxDatabase.MIGRATION_4_5)
+            .addMigrations(LuxDatabase.MIGRATION_1_2, LuxDatabase.MIGRATION_2_3, LuxDatabase.MIGRATION_3_4, LuxDatabase.MIGRATION_4_5, LuxDatabase.MIGRATION_5_6)
             .build()
     }
 

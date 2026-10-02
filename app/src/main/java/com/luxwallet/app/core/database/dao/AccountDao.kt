@@ -10,6 +10,8 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface AccountDao {
+    @Query("UPDATE accounts SET name = :name, notes = :notes WHERE id = :id")
+    suspend fun updateMetadata(id: Long, name: String, notes: String?)
     @Query("UPDATE accounts SET name = :name WHERE id = :id")
     suspend fun rename(id: Long, name: String)
     @Query("UPDATE accounts SET isActive = :active WHERE id = :id")

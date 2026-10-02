@@ -15,9 +15,6 @@ class LumiStateRepository(app: LuxWalletApp) {
             categories.filter { it.name == com.luxwallet.app.core.common.TransportPlan.CATEGORY }.map { it.id }.toSet(),
             categories.filter { it.name == PaydayPlan.BILLS_CATEGORY }.map { it.id }.toSet(), goals, now, LocalDate.now()) }
     }
-    val mood = combine(inputs, clock, app.notificationRepository.observeAll()) { evaluate, now, observations ->
-        val result = evaluate(now)
-        if (observations.any { it.parseStatus == com.luxwallet.app.core.model.ParseStatus.FAILED } && result !in setOf(LumiMood.NERVOUS, LumiMood.SAD, LumiMood.ANGRY)) LumiMood.CURIOUS else result
-    }
+    val mood = combine(inputs, clock) { evaluate, now -> evaluate(now) }
         .distinctUntilChanged().stateIn(app.applicationScope, SharingStarted.Eagerly, LumiMood.CALM)
 }

@@ -35,16 +35,25 @@ import kotlinx.coroutines.launch
     var showArchived by rememberSaveable { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     var tab by rememberSaveable { mutableStateOf(0) }
-    var confirmArchive by rememberSaveable { mutableStateOf(false) }
+    var confirmDelete by rememberSaveable { mutableStateOf(false) }
     var edit by rememberSaveable { mutableStateOf<String?>(null) }
     var name by rememberSaveable { mutableStateOf("") }
     var amount by rememberSaveable { mutableStateOf("") }
+    var notes by rememberSaveable { mutableStateOf("") }
+    var originalValue by rememberSaveable { mutableStateOf(0L) }
     var assetClass by rememberSaveable { mutableStateOf(AssetClass.OTHER) }
     val account = edit?.takeIf { it.startsWith("account:") }?.substringAfter(':')?.toLongOrNull()?.let { id -> state.liquidAccounts.find { it.id == id } }
-    val asset = edit?.takeIf { it.startsWith("asset:") }?.substringAfter(':')?.toLongOrNull()?.let { id -> (state.investments + state.otherAssets).find { it.id == id } }
+    val asset = edit?.takeIf { it.startsWith("asset:") }?.substringAfter(':')?.toLongOrNull()?.let { id -> (state.investments + state.otherAssets + archived).find { it.id == id } }
     val liability = if (edit == "newDebt") com.luxwallet.app.core.database.entity.LiabilityEntity(name = "", type = com.luxwallet.app.core.model.LiabilityType.OTHER_DEBT, currentOutstanding = 0, updatedAt = System.currentTimeMillis()) else edit?.takeIf { it.startsWith("debt:") }?.substringAfter(':')?.toLongOrNull()?.let { id -> state.liabilities.find { it.id == id } }
     fun money(value: Long) = if (hidden) "********" else AmountFormat.rupiah(value)
     fun open(key: String, title: String, value: Long, type: AssetClass = AssetClass.OTHER) {
+        notes = when {
+            key.startsWith("account:") -> state.liquidAccounts.find { it.id == key.substringAfter(':').toLongOrNull() }?.notes
+            key.startsWith("asset:") -> (state.investments + state.otherAssets + archived).find { it.id == key.substringAfter(':').toLongOrNull() }?.notes
+            key.startsWith("debt:") -> state.liabilities.find { it.id == key.substringAfter(':').toLongOrNull() }?.notes
+            else -> null
+        }.orEmpty()
+        originalValue = value
         edit = key; name = title; amount = value.toString(); assetClass = type; vm.error.value = null
     }
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 96.dp), verticalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -80,29 +89,30 @@ import kotlinx.coroutines.launch
         when (tab) {
             0 -> {
                 items(state.liquidAccounts, key = { it.id }) { item ->
-                    AssetRow(item.name, "Saldo estimasi · ketuk untuk menyesuaikan", money(item.currentEstimatedBalance)) { open("account:${item.id}", item.name, item.currentEstimatedBalance) }
+                    AssetRow(item.name, "Saldo estimasi · ketuk untuk menyesuaikan", money(item.currentEstimatedBalance), if (hidden) null else item.notes) { open("account:${item.id}", item.name, item.currentEstimatedBalance) }
                 }
                 item { OutlinedButton(onAccounts, Modifier.fillMaxWidth()) { Text("Kelola / tambah rekening") } }
             }
             1, 2 -> {
                 val assets = if (tab == 1) state.investments else state.otherAssets
                 items(assets, key = { it.id }) { item ->
-                    AssetRow(item.name, item.assetClass.label(), money(item.currentValue)) { open("asset:${item.id}", item.name, item.currentValue, item.assetClass) }
+                    AssetRow(item.name, item.assetClass.label(), money(item.currentValue), if (hidden) null else item.notes) { open("asset:${item.id}", item.name, item.currentValue, item.assetClass) }
                 }
                 item { OutlinedButton({ open("new", "", 0, if (tab == 1) AssetClass.REKSA_DANA else AssetClass.OTHER) }, Modifier.fillMaxWidth()) { Text("Tambah aset manual") } }
             }
             3 -> {
                 items(state.liabilities, key = { it.id }) { item ->
-                    AssetRow(item.name, "Sisa kewajiban · ubah manual", money(item.currentOutstanding)) { open("debt:${item.id}", item.name, item.currentOutstanding) }
+                    AssetRow(item.name, "Sisa kewajiban · ubah manual", money(item.currentOutstanding), if (hidden) null else item.notes) { open("debt:${item.id}", item.name, item.currentOutstanding) }
                 }
                 item { OutlinedButton({ open("newDebt", "", 0) }, Modifier.fillMaxWidth()) { Text("Tambah utang") } }
             }
         }
         if (archived.isNotEmpty()) {
-            item { TextButton({ showArchived = !showArchived }) { Text("Arsip aset (${archived.size})") } }
+            item { TextButton({ showArchived = !showArchived }) { Text("Aset yang disembunyikan (${archived.size})") } }
             if (showArchived) items(archived, key = { "archive-${it.id}" }) { item ->
                 OutlinedCard(Modifier.fillMaxWidth()) { Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(item.name, Modifier.weight(1f))
+                    TextButton({ open("asset:${item.id}", item.name, item.currentValue, item.assetClass) }) { Text("Kelola") }
                     TextButton({ scope.launch {
                         try { app.assetRepository.restore(item.id) }
                         catch (e: kotlinx.coroutines.CancellationException) { throw e }
@@ -116,30 +126,33 @@ import kotlinx.coroutines.launch
     }
     if (edit != null) ModalBottomSheet(onDismissRequest = { if (!saving) edit = null }) {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).imePadding().padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Text(if (edit == "new") "Tambah aset" else if (edit == "newDebt") "Tambah utang" else "Ubah nominal", style = MaterialTheme.typography.titleLarge)
+            Text(if (edit == "new") "Tambah aset" else if (edit == "newDebt") "Tambah utang" else "Ubah aset", style = MaterialTheme.typography.titleLarge)
             OutlinedTextField(name, { name = it }, Modifier.fillMaxWidth(), label = { Text("Nama") }, singleLine = true)
             if (account == null && liability == null) {
                 val types = AssetClass.entries.filter { it !in setOf(AssetClass.BANK, AssetClass.EWALLET, AssetClass.CASH) }
                 ChoiceField("Jenis aset", assetClass.label(), types.map { it.label() }, { assetClass = types[it] })
             }
             MoneyField(if (liability != null) "Sisa utang" else "Nilai saat ini", amount, { amount = it })
+            OutlinedTextField(notes, { if (it.length <= 2000) notes = it }, Modifier.fillMaxWidth(),
+                label = { Text("Catatan aset (opsional)") }, placeholder = { Text("Tujuan dana, jatuh tempo, atau catatan pribadi") },
+                minLines = 2, maxLines = 5, supportingText = { Text("${notes.length}/2.000") })
             if (account != null) Text("Selisih terhadap saldo sekarang akan dicatat sebagai koreksi saldo.", style = MaterialTheme.typography.bodySmall)
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Button(enabled = !saving, modifier = Modifier.fillMaxWidth(), onClick = {
                 val value = AmountParser.normalizeOrNull(amount)
                 if (value == null || value < 0) vm.error.value = "Isi nominal nol atau positif yang valid."
-                else vm.saveValue(account?.id, asset, liability, name, assetClass, value) { edit = null }
-            }) { Text(if (saving) "Menyimpan…" else "Simpan nilai") }
-            if (account != null || asset != null) TextButton({ confirmArchive = true }, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-                Icon(Icons.Outlined.Archive, null); Spacer(Modifier.width(8.dp)); Text("Hapus dari aset aktif")
+                else vm.saveValue(account?.id, asset, liability, name, assetClass, value, originalValue, notes) { edit = null }
+            }) { Text(if (saving) "Menyimpan…" else "Simpan perubahan") }
+            if (account != null || asset != null || (liability != null && liability.id != 0L)) TextButton({ confirmDelete = true }, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
+                Icon(Icons.Outlined.DeleteOutline, null); Spacer(Modifier.width(8.dp)); Text("Hapus")
             }
         }
     }
-    if (confirmArchive) AlertDialog(onDismissRequest = { if (!saving) confirmArchive = false },
-        title = { Text("Arsipkan aset ini?") },
-        text = { Text("Aset tidak lagi masuk total kekayaan. Riwayat transaksi tetap tersimpan. Rekening dapat diaktifkan kembali lewat Kelola rekening.") },
-        confirmButton = { TextButton(enabled = !saving, onClick = { vm.archive(account?.id, asset) { confirmArchive = false; edit = null } }) { Text("Arsipkan") } },
-        dismissButton = { TextButton({ confirmArchive = false }, enabled = !saving) { Text("Batal") } })
+    if (confirmDelete) AlertDialog(onDismissRequest = { if (!saving) confirmDelete = false },
+        title = { Text(if (account != null) "Hapus rekening dari aset?" else "Hapus catatan ini?") },
+        text = { Text(if (account != null) "Rekening dihapus dari aset aktif dan pemantauan otomatis. Riwayat transaksi tetap tersimpan untuk laporan. Rekening dapat diaktifkan kembali lewat Kelola rekening." else "Catatan dan nominal ini akan dihapus permanen dari aset. Tindakan ini tidak mencatat pembayaran atau mengubah riwayat transaksi.") },
+        confirmButton = { TextButton(enabled = !saving, onClick = { vm.delete(account?.id, asset, liability) { confirmDelete = false; edit = null } }) { Text("Hapus") } },
+        dismissButton = { TextButton({ confirmDelete = false }, enabled = !saving) { Text("Batal") } })
 }
 private fun AssetClass.label() = when (this) {
     AssetClass.REKSA_DANA -> "Reksa dana"; AssetClass.OBLIGASI_SBN -> "Obligasi / SBN"; AssetClass.SAHAM -> "Saham"
@@ -147,13 +160,14 @@ private fun AssetClass.label() = when (this) {
     AssetClass.PROPERTI -> "Properti"; AssetClass.PIUTANG -> "Piutang"; AssetClass.CRYPTO -> "Kripto"
     else -> "Aset lainnya"
 }
-@Composable private fun AssetRow(name: String, subtitle: String, value: String, onEdit: () -> Unit) {
+@Composable private fun AssetRow(name: String, subtitle: String, value: String, notes: String? = null, onEdit: () -> Unit) {
     Card(onEdit, Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)) {
         Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) { Icon(Icons.Outlined.AccountBalanceWallet, null, tint = MaterialTheme.colorScheme.primary); Text(name, style = MaterialTheme.typography.titleMedium) }
             Text(value, style = MaterialTheme.typography.headlineSmall)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Row(verticalAlignment = Alignment.CenterVertically) { Text("Ubah nominal", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge); Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp)) }
+            notes?.takeIf { it.isNotBlank() }?.let { Text(it, style = MaterialTheme.typography.bodySmall, maxLines = 2, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis) }
+            Row(verticalAlignment = Alignment.CenterVertically) { Text("Ubah aset", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.labelLarge); Icon(Icons.Outlined.ChevronRight, null, Modifier.size(18.dp)) }
         }
     }
 }

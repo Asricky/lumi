@@ -30,6 +30,7 @@ import kotlinx.coroutines.launch
 @Composable fun HomeScreen(onNavigate: (String) -> Unit = {}) {
     val viewModel = luxViewModel { HomeViewModel.create(it) }
     val state by viewModel.uiState.collectAsState()
+    val reviewCount by viewModel.reviewCount.collectAsState()
     val planner = luxViewModel { com.luxwallet.app.feature.planner.PlannerViewModel(it) }
     val planState by planner.state.collectAsState()
     val status = planState.status
@@ -76,11 +77,17 @@ import kotlinx.coroutines.launch
                 Shortcut("Tinjau", Icons.Outlined.FactCheck, Modifier.weight(1f)) { onNavigate(LuxDestinations.NEEDS_REVIEW) }
             }
         }
+        if (reviewCount > 0) item {
+            TextButton({ onNavigate(LuxDestinations.NEEDS_REVIEW) }) {
+                Icon(Icons.Outlined.FactCheck, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp))
+                Text("$reviewCount catatan perlu ditinjau")
+            }
+        }
         item {
             Card(Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Ruang belanja hari ini", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
+                        Text("Sisa budget hari ini", Modifier.weight(1f), style = MaterialTheme.typography.titleMedium)
                         IconButton({ showInfo = true }) { Icon(Icons.Outlined.Info, "Cara menghitung ruang belanja") }
                     }
                     if (status == null || planState.adaptive == null) {
@@ -90,10 +97,13 @@ import kotlinx.coroutines.launch
                         planState.interim?.let { InterimBudgetCard(it, hidden) }
                     } else {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                            Text(money(status.remainingToday.coerceAtLeast(0)), Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
+                            Text(money(planState.adaptive?.safeToSpend ?: 0), Modifier.weight(1f), style = MaterialTheme.typography.headlineMedium)
                             Lumi(mood, Modifier.size(72.dp))
                         }
-                        Text("Sampai ${status.plan.end.format(com.luxwallet.app.feature.planner.planDateFormat)}", style = MaterialTheme.typography.bodySmall)
+                        Text("Budget ${money(status.dailyBudget)} − terpakai ${money(status.spentToday)}", style = MaterialTheme.typography.bodyMedium)
+                        if ((planState.adaptive?.safeToSpend ?: 0) < (status.dailyBudget - status.spentToday).coerceAtLeast(0)) Text("Sisa disesuaikan dana tersedia agar cukup sampai gajian.", style = MaterialTheme.typography.bodySmall)
+                        Text("Sampai ${status.plan.end.format(com.luxwallet.app.feature.planner.planDateFormat)} · transportasi terpisah", style = MaterialTheme.typography.bodySmall)
+                        Text("Cadangan transportasi tersisa ${money((status.plan.transportReserve - status.transportSpent).coerceAtLeast(0))}", style = MaterialTheme.typography.bodySmall)
                         if (!hidden) LinearProgressIndicator(progress = { (status.usedPercent / 100).toFloat().coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth(),
                             color = if (status.remainingToday < 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
                         Text(if (hidden) "Penggunaan disembunyikan" else if (status.dailyBudget <= 0 && status.spentToday > 0) "Belanja tanpa budget tersedia · ${money(status.spentToday)}" else "${status.usedPercent.toInt()}% terpakai · ${money(status.spentToday)} dari ${money(status.dailyBudget)}", style = MaterialTheme.typography.bodySmall)
@@ -114,7 +124,7 @@ import kotlinx.coroutines.launch
                         LumiMood.NERVOUS -> if ((status?.usedPercent ?: 0.0) >= 90) "Budget hampir habis, dahulukan kebutuhan utama" else "Budget mulai menipis, cek sebelum belanja lagi"
                         else -> advice.title
                     }, style = MaterialTheme.typography.titleMedium)
-                        if (status != null && !status.expired) Text(if (hidden) "Rencana harianmu tersimpan" else "${status.usedPercent.toInt()}% budget terpakai · sisa ${money(status.remainingToday.coerceAtLeast(0))}", style = MaterialTheme.typography.bodySmall) }
+                        if (status != null && !status.expired) Text(if (hidden) "Rencana harianmu tersimpan" else "${status.usedPercent.toInt()}% budget terpakai · sisa ${money(planState.adaptive?.safeToSpend ?: 0)}", style = MaterialTheme.typography.bodySmall) }
                     Icon(Icons.Outlined.ChevronRight, "Buka saran Lumi")
                 }
             }
@@ -153,7 +163,7 @@ import kotlinx.coroutines.launch
         }
     }
     if (showInfo) AlertDialog(onDismissRequest = { showInfo = false }, title = { Text("Dari mana angkanya?") },
-        text = { Text("Saldo likuid yang kamu konfirmasi dikurangi tagihan, dana penyangga, modal bisnis, investasi, dan transportasi sampai gajian. Sisanya dibagi jumlah hari rencana. Belanja mengurangi sisa harian dan dibatasi dana bebas yang masih ada.\n\nTop-up sendiri tidak mengurangi budget. Tagihan terencana dan Transportasi rutin memakai cadangannya dahulu. Perkiraan pemasukan tidak dihitung sebagai saldo. Lihat rincian pada rencana sampai gajian.") },
+        text = { Text("Saldo sekarang dikurangi cadangan tagihan, penyangga, bisnis, investasi, dan transportasi yang belum terpakai. Belanja sebelum konfirmasi ditambahkan kembali hanya untuk menentukan budget harian, lalu seluruh belanja hari ini mengurangi budget. Saldo tidak dipotong dua kali. Sisa yang ditampilkan juga dibatasi rekomendasi serta dana bebas yang masih tersedia.\n\nTop-up sendiri tidak mengurangi budget. Tagihan terencana dan Transportasi rutin memakai cadangannya dahulu. Perkiraan pemasukan tidak dihitung sebagai saldo. Lihat rincian pada rencana sampai gajian.") },
         confirmButton = { TextButton({ showInfo = false; onNavigate(LuxDestinations.PLANNER) }) { Text("Lihat rencana") } },
         dismissButton = { TextButton({ showInfo = false }) { Text("Tutup") } })
 }

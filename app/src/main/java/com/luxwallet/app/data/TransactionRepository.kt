@@ -76,10 +76,38 @@ class TransactionRepository(
         }
     }
 
-    suspend fun updateAccountValue(id: Long, name: String, value: Long) = database.withTransaction {
+    /** Retry only by explicit user action; never replay a transaction already reflected in a reconciled balance. */
+    suspend fun retryFailedNotification(id: Long, registry: com.luxwallet.app.parser.core.ParserRegistry): String = database.withTransaction {
+        val item = observationDao.getById(id) ?: return@withTransaction "Pesan sudah tidak tersedia."
+        if (item.parseStatus != ParseStatus.FAILED || item.linkedTransactionId != null)
+            return@withTransaction "Pesan sudah diproses sebelumnya."
+        val input = com.luxwallet.app.parser.core.NotificationInput(item.sourceApp, item.title, item.text,
+            item.bigText, item.subText, item.textLines?.split("\n").orEmpty(), item.postedAt)
+        when (val result = registry.parse(input)) {
+            is com.luxwallet.app.parser.core.ParseResult.Parsed -> {
+                val account = accountDao.findAllUserOwnedByProvider(providerFor(item.sourceApp)).singleOrNull()
+                if (account?.lastReconciledAt?.let { item.postedAt <= it } == true)
+                    return@withTransaction "Pesan ini mendahului koreksi saldo. Saldo tidak diubah agar uang tidak dihitung dua kali; periksa riwayat sebelum mencatat manual."
+                val pending = item.copy(parseStatus = ParseStatus.PENDING, parseFailureReason = null,
+                    parserVersion = com.luxwallet.app.parser.core.ParserRegistry.PARSER_VERSION)
+                observationDao.update(pending)
+                ingest(pending, result.candidate)
+                "Pesan telah dibaca ulang. Periksa hasilnya di riwayat atau tinjauan."
+            }
+            is com.luxwallet.app.parser.core.ParseResult.Failed -> {
+                observationDao.update(item.copy(parseFailureReason = result.reason,
+                    parserVersion = com.luxwallet.app.parser.core.ParserRegistry.PARSER_VERSION))
+                "Pesan masih belum dikenali. Kamu bisa mencatatnya secara manual."
+            }
+            com.luxwallet.app.parser.core.ParseResult.NotFinancial -> "Pesan bukan bukti transaksi berhasil; saldo tidak diubah."
+        }
+    }
+
+    suspend fun updateAccountValue(id: Long, name: String, value: Long?, notes: String? = null) = database.withTransaction {
         require(name.isNotBlank())
-        setAccountBalance(id, value)
-        accountDao.rename(id, name.trim())
+        require(notes == null || notes.length <= 2000)
+        if (value != null) setAccountBalance(id, value)
+        accountDao.updateMetadata(id, name.trim(), notes?.trim()?.ifBlank { null })
     }
 
     suspend fun confirm(id: Long, merchant: String? = null, note: String? = null) = database.withTransaction {

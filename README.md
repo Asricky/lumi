@@ -15,27 +15,29 @@
 <!-- LATEST_RELEASE_START -->
 ## Download aplikasi
 
-[**Download Lumi - app-debug-v8.apk**](https://github.com/Asricky/lumi/raw/refs/heads/main/app/build/outputs/apk/debug/app-debug-v8.apk)
+[**Download Lumi - app-debug-v9.apk**](https://github.com/Asricky/lumi/raw/refs/heads/main/app/build/outputs/apk/debug/app-debug-v9.apk)
 
-**v8 / 1.0.8** &nbsp; | &nbsp; Android 10+ &nbsp; | &nbsp; [Semua versi](app/build/outputs/apk/debug)
+**v9 / 1.0.9** &nbsp; | &nbsp; Android 10+ &nbsp; | &nbsp; [Semua versi](app/build/outputs/apk/debug)
 
 ### Yang baru
 
-- Kalkulator diperbarui dengan panel perhitungan/hasil, keypad yang lebih rapi, serta format Indonesia: titik ribuan dan koma desimal pada input, hasil, dan simulasi pertumbuhan.
-- Tempel nominal seperti `1.500.000,50`, edit pada posisi kursor, hapus pilihan, atau lanjutkan operasi dari hasil. Format tempelan ambigu ditolak dengan pesan yang jelas; kalkulator tidak mengubah saldo.
-- Grafik pengeluaran Kalender memakai batang harian, skala otomatis, total periode, rata-rata, dan rincian tanggal terpilih. Ketuk batang atau gunakan pemilih tanggal yang aksesibel.
-- Mode privasi menyembunyikan seluruh angka/grafik; hari mendatang tidak ditampilkan sebagai pengeluaran aktual.
-- Validasi: 156 pengujian lulus; lint tanpa error (14 peringatan). Tampilan diuji melalui rendering native pada lebar 320/393 dp; belum diuji pada HP fisik.
+- Beranda dan Rencana menampilkan **Sisa budget hari ini**, budget awal, pemakaian, serta cadangan transportasi terpisah. Konfirmasi saldo tetap menghitung belanja sebelum konfirmasi sebagai pemakaian hari ini tanpa memotong saldo dua kali.
+- Transportasi dijelaskan sebagai hari perjalanan × tarif, dikurangi bagian yang sudah dibayar hari ini. Top-up dompet sendiri bukan pengeluaran; pembayaran perjalanan memakai cadangan transportasi.
+- Catatan tersedia pada rekening, investasi, aset lain, dan utang. Aset manual dapat dihapus permanen; menghapus rekening dari aset aktif tetap menjaga riwayat transaksi. Migrasi database mempertahankan data lama.
+- Kolom nominal nol menjadi placeholder sehingga angka baru tidak tersambung dengan nol bawaan. Kalkulator memakai hasil yang lebih jelas tanpa tulisan “Tekan =”.
+- Transfer masuk SeaBank dengan format “kamu menerima transfer saldo senilai Rp647.500” terbaca sebagai pemasukan. Pesan lama yang gagal bisa dibaca ulang dari Tinjauan dengan konfirmasi; pesan sebelum koreksi saldo tidak dimasukkan ulang.
+- Lumi tidak lagi bingung terus karena tinjauan lama saat budget aktif masih aman. Jumlah catatan yang perlu diperiksa tetap terlihat di Beranda.
+- Validasi: 175 pengujian lulus tanpa gagal/skip; lint 0 error, 14 peringatan. Migrasi Room v1–v5 ke v6, pemrosesan SeaBank, konfirmasi saldo, dan alur catatan/hapus aset diuji. Render layar kecil diperiksa; belum diuji pada HP fisik.
 
 <details>
 <summary>Lokasi file &amp; verifikasi unduhan</summary>
 
-File: `app/build/outputs/apk/debug/app-debug-v8.apk`
+File: `app/build/outputs/apk/debug/app-debug-v9.apk`
 
 SHA-256:
 
 ```text
-0262FB776866FB54B4DEB8E7B15FBB7A275FBD1A71A133AA476033DDE808AA46
+3EF595786566F7A80BDD7922EDD1438B05F1C44BD920E5214243FC90B2FC62AE
 ```
 
 </details>
@@ -46,11 +48,11 @@ SHA-256:
 | Fitur | Yang bisa kamu lakukan |
 | --- | --- |
 | **Catatan otomatis** | Membaca notifikasi BCA mobile/myBCA, SeaBank, ShopeePay, dan GoPay, dengan pemeriksaan duplikat. |
-| **Tinjauan praktis** | Baca pesan langsung, pilih beberapa catatan atau semuanya, lalu hapus sekaligus dengan satu konfirmasi. |
+| **Tinjauan praktis** | Baca pesan, coba baca ulang format yang diperbaiki, pilih beberapa catatan, lalu hapus sekaligus. |
 | **Laporan bulanan PDF** | Preview laporan berdesain, evaluasi Lumi, rekomendasi bulan berikutnya, lalu download ke lokasi pilihanmu. |
 | **Kalender keuangan** | Lihat pemasukan, pengeluaran, selisih harian, dan tren pengeluaran per bulan. |
 | **Rencana sampai gajian** | Pisahkan kebutuhan wajib dan belanja; saran sementara tetap tersedia saat rencana belum diperbarui. |
-| **Aset & kalkulator** | Koreksi saldo, kelola aset, arsipkan rekening, dan simulasikan rencana uang. |
+| **Aset & kalkulator** | Koreksi saldo, tambah catatan aset, hapus aset, dan simulasikan rencana uang. |
 | **Temani hari bersama Lumi** | Sembilan ekspresi mengikuti kondisi keuangan, dengan tema terang/gelap dan pilihan privasi nominal. |
 
 ## Mulai dalam beberapa langkah

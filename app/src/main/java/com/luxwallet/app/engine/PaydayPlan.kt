@@ -21,20 +21,25 @@ data class PaydayPlan(
     val transportDaily: Long = 6000,
     val weekdaysOnly: Boolean = true,
     val expectedOn25: Long = 0,
-    val expectedOn1: Long = 0
+    val expectedOn1: Long = 0,
+    // Already reflected in availableCash, but still counts against the first day's allowance.
+    val spentBeforeCapture: Long = 0,
+    val transportPaidBeforeCapture: Long = 0
 ) {
     val start: LocalDate get() = LocalDate.ofEpochDay(startDay)
     val end: LocalDate get() = LocalDate.ofEpochDay(payday)
     val days: Int get() = ChronoUnit.DAYS.between(start, end).toInt()
-    val transportReserve: Long get() = (0 until days).count {
+    val transportDays: Int get() = (0 until days).count {
         !weekdaysOnly || start.plusDays(it.toLong()).dayOfWeek !in setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)
-    } * transportDaily
+    }
+    val transportGross: Long get() = transportDays * transportDaily
+    val transportReserve: Long get() = (transportGross - transportPaidBeforeCapture).coerceAtLeast(0)
     val protectedCash get() = bills + buffer + business + investment + transportReserve
     val freeCash get() = availableCash - protectedCash
-    val dailyBudget get() = (freeCash / days.coerceAtLeast(1)).coerceAtLeast(0)
+    val dailyBudget get() = ((freeCash + spentBeforeCapture) / days.coerceAtLeast(1)).coerceAtLeast(0)
     fun validate() {
         require(days in 1..62) { "Tanggal pemasukan harus 1–62 hari setelah hari ini." }
-        require(listOf(availableCash, bills, buffer, business, investment, transportDaily, expectedOn25, expectedOn1).all { it in 0..999_999_999_999_999L }) { "Nominal tidak valid." }
+        require(listOf(availableCash, bills, buffer, business, investment, transportDaily, expectedOn25, expectedOn1, spentBeforeCapture, transportPaidBeforeCapture).all { it in 0..999_999_999_999_999L }) { "Nominal tidak valid." }
         require(transportDaily <= 10_000_000L) { "Biaya perjalanan terlalu besar." }
     }
     companion object {
@@ -56,6 +61,19 @@ data class PaydayStatus(
 }
 
 object PaydayMath {
+    fun capture(plan: PaydayPlan, transactions: List<TransactionEntity>, transportIds: Set<Long>, billIds: Set<Long>, zone: ZoneId = ZoneId.systemDefault()): PaydayPlan {
+        val dayStart = plan.start.atStartOfDay(zone).toInstant().toEpochMilli()
+        val earlier = CashflowMath.cashflowEligible(transactions).filter {
+            it.transactionTime in dayStart until plan.capturedAt && it.direction == TransactionDirection.OUT &&
+                it.type !in setOf(TransactionType.EWALLET_TOPUP, TransactionType.BALANCE_ADJUSTMENT)
+        }
+        val dailyTravel = if (!plan.weekdaysOnly || plan.start.dayOfWeek !in setOf(DayOfWeek.SATURDAY, DayOfWeek.SUNDAY)) plan.transportDaily else 0L
+        val travelPaid = earlier.filter { it.categoryId in transportIds }.sumOf { it.amount }
+        val freeSpent = earlier.filter { it.categoryId !in transportIds && it.categoryId !in billIds }.sumOf { it.amount }
+        return plan.copy(spentBeforeCapture = freeSpent + (travelPaid - dailyTravel).coerceAtLeast(0),
+            transportPaidBeforeCapture = minOf(travelPaid, dailyTravel))
+    }
+
     fun eligible(plan: PaydayPlan, transactions: List<TransactionEntity>, until: LocalDate, zone: ZoneId): List<TransactionEntity> {
         val end = minOf(until.plusDays(1), plan.end).atStartOfDay(zone).toInstant().toEpochMilli()
         return CashflowMath.cashflowEligible(transactions).filter {
@@ -76,7 +94,8 @@ object PaydayMath {
             return (total - reserve).coerceAtLeast(0) - (before - reserve).coerceAtLeast(0)
         }
         val spentToday = free.filter { it.transactionTime >= dayStart }.sumOf { it.amount } +
-            excessForDay(transportIds, plan.transportReserve) + excessForDay(billIds, plan.bills)
+            excessForDay(transportIds, plan.transportReserve) + excessForDay(billIds, plan.bills) +
+            if (today == plan.start) plan.spentBeforeCapture else 0L
         val remaining = plan.availableCash + income - out.sumOf { it.amount }
         val protected = plan.buffer + plan.business + plan.investment +
             (plan.transportReserve - transport).coerceAtLeast(0) + (plan.bills - bills).coerceAtLeast(0)

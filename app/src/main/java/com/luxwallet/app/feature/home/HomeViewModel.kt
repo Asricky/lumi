@@ -24,6 +24,10 @@ data class HomeUiState(
 )
 
 class HomeViewModel(private val app: LuxWalletApp) : ViewModel() {
+    val reviewCount = combine(app.transactionRepository.observeByReviewStatus(ReviewStatus.NEEDS_REVIEW),
+        app.notificationRepository.observeAll()) { txs, observations ->
+        txs.size + observations.count { it.parseStatus == com.luxwallet.app.core.model.ParseStatus.FAILED }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
     private val state = MutableStateFlow(HomeUiState())
     val uiState: StateFlow<HomeUiState> = state
     private data class Inputs(val accounts: List<AccountEntity>, val assets: List<AssetEntity>,

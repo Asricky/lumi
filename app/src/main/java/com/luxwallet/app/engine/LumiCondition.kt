@@ -20,7 +20,7 @@ object LumiCondition {
         val previous = PaydayPlan.forDay(plans, yesterday)?.let { PaydayMath.status(it, transactions, transport, bills, yesterday) }
         val achieved = goals.any { it.targetAmount > 0 && it.currentAmount >= it.targetAmount } ||
             (previous != null && previous.dailyBudget > 0 && previous.spentToday <= previous.dailyBudget && previous.freeRemaining >= 0)
-        return companionMood(status, transactions.any { it.reviewStatus == ReviewStatus.NEEDS_REVIEW }, spike,
+        return companionMood(status, transactions.any { it.reviewStatus == ReviewStatus.NEEDS_REVIEW && now - it.transactionTime in 0..86_400_000L }, spike,
             recent && latest?.direction == TransactionDirection.IN, achieved)
     }
 }

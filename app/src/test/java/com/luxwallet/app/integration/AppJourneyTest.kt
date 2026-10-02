@@ -90,7 +90,7 @@ class AppJourneyTest {
         val bitmap=android.graphics.Bitmap.createBitmap(view.width,view.height,android.graphics.Bitmap.Config.ARGB_8888)
         compose.runOnIdle { view.draw(android.graphics.Canvas(bitmap)) }
         java.io.File("build/reports/ui").mkdirs()
-        java.io.File("build/reports/ui/calculator-v8.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
+        java.io.File("build/reports/ui/calculator-v9.png").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG,100,it) }
         compose.onNodeWithContentDescription("+").performScrollTo().performClick()
         compose.onNodeWithContentDescription("9").performScrollTo().performClick()
         compose.onNodeWithText("=").performScrollTo().performClick()
@@ -316,7 +316,7 @@ class AppJourneyTest {
             java.io.File("build/reports/ui/$name").outputStream().use { bitmap.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
         }
         compose.runOnIdle { nav.openScreen(LuxDestinations.PLANNER) }
-        compose.waitUntil(5000) { compose.onAllNodesWithText("Aman dibelanjakan hari ini").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(5000) { compose.onAllNodesWithText("Sisa budget hari ini").fetchSemanticsNodes().isNotEmpty() }
         capture("planner-320.png")
         compose.runOnIdle { nav.openScreen(LuxDestinations.COACH) }
         compose.waitUntil(5000) { compose.onAllNodesWithText("Pengingat & ikon Lumi").fetchSemanticsNodes().isNotEmpty() }
@@ -384,6 +384,80 @@ class AppJourneyTest {
             Assert.assertEquals(ReviewStatus.NEEDS_REVIEW, app.database.transactionDao().getById(later)!!.reviewStatus)
             Assert.assertEquals(97000L, app.accountRepository.observeActiveAccounts().first().first().currentEstimatedBalance)
         }
+    }
+
+    @Test fun zeroMoneyFieldStartsFreshAndFormatsThousands() {
+        var amount by mutableStateOf("0")
+        compose.setContent { LuxWalletTheme {
+            com.luxwallet.app.core.ui.component.MoneyField("Dana penyangga", amount, { amount = it })
+        } }
+        compose.onNodeWithText("Dana penyangga").performTextInput("6000")
+        compose.runOnIdle { Assert.assertEquals("6000", amount) }
+        compose.onNodeWithText("6.000").assertIsDisplayed()
+        compose.onNodeWithText("Dana penyangga").performTextReplacement("0001500000")
+        compose.runOnIdle { Assert.assertEquals("1500000", amount) }
+        compose.onNodeWithText("1.500.000").assertIsDisplayed()
+    }
+
+    @Test fun assetNotesSaveAndPermanentDeleteWorkFromSheet() {
+        runBlocking {
+            app.preferences.setAmountsHidden(false)
+            app.assetRepository.upsert(com.luxwallet.app.core.database.entity.AssetEntity(
+                name = "Emas uji", assetClass = AssetClass.EMAS, currentValue = 1500000, updatedAt = 1))
+        }
+        launch()
+        compose.runOnIdle { nav.openScreen(LuxDestinations.ASSETS) }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Utang"))
+        compose.onNode(hasText("Lainnya") and hasAnyAncestor(hasScrollToIndexAction())).performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Emas uji"))
+        compose.onNodeWithText("Emas uji").performScrollTo().performClick()
+        compose.onNodeWithText("Catatan aset (opsional)").performScrollTo().performTextInput("Untuk dana cadangan")
+        compose.onNodeWithText("Simpan perubahan").performScrollTo().performClick()
+        compose.waitUntil(5000) { runBlocking { app.database.assetDao().getAllOnce().single().notes == "Untuk dana cadangan" } }
+        compose.waitUntil(5000) { compose.onAllNodesWithText("Simpan perubahan").fetchSemanticsNodes().isEmpty() }
+        compose.onNodeWithText("Untuk dana cadangan").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithText("Emas uji").performScrollTo().performClick()
+        compose.onNodeWithText("Hapus", useUnmergedTree = true).performScrollTo().performClick()
+        compose.onNodeWithText("Hapus catatan ini?").assertIsDisplayed()
+        compose.onAllNodesWithText("Hapus").onLast().performClick()
+        compose.waitUntil(5000) { runBlocking { app.database.assetDao().getAllOnce().isEmpty() } }
+        compose.onNodeWithText("Beranda").performClick()
+    }
+
+    @Test fun confirmingCurrentCashKeepsEarlierSpendingAndEmptyAllocationsAreZero() {
+        runBlocking {
+            val account = app.accountRepository.observeActiveAccounts().first().first()
+            app.transactionRepository.insertManual(TransactionType.EXPENSE, TransactionDirection.OUT, 20000,
+                account.id, transactionTime = System.currentTimeMillis() - 1000)
+            app.preferences.setAmountsHidden(false)
+        }
+        launch()
+        compose.runOnIdle { nav.openScreen(LuxDestinations.PLANNER) }
+        compose.waitForIdle()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Buat rencana"))
+        compose.onNodeWithText("Buat rencana").performScrollTo().performClick()
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Saldo likuid yang tersedia sekarang"))
+        compose.onNodeWithText("Saldo likuid yang tersedia sekarang").performTextInput("80000")
+        listOf("Lindungi untuk modal bisnis", "Lindungi untuk investasi", "Transportasi per hari").forEach {
+            compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText(it))
+            compose.onNodeWithText(it).performTextReplacement("0")
+        }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Konfirmasi saldo & simpan rencana"))
+        compose.onNodeWithText("Konfirmasi saldo & simpan rencana").performClick()
+        compose.waitUntil(10000) { runBlocking { app.paydayPlanRepository.plans.first().isNotEmpty() } }
+        runBlocking {
+            val plan = app.paydayPlanRepository.plans.first().single()
+            Assert.assertEquals(80000L, plan.availableCash)
+            Assert.assertEquals(20000L, plan.spentBeforeCapture)
+            Assert.assertEquals(0L, plan.bills)
+            Assert.assertEquals(0L, plan.buffer)
+            Assert.assertEquals(0L, plan.transportDaily)
+            Assert.assertEquals(80000L, app.accountRepository.observeActiveAccounts().first().first().currentEstimatedBalance)
+        }
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(hasText("Sisa budget hari ini"))
+        compose.onNodeWithText("Sisa budget hari ini").assertIsDisplayed()
+        compose.onNodeWithContentDescription("Kembali").performClick()
+        compose.onNodeWithText("Beranda").assertExists()
     }
 
 }

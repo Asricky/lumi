@@ -1,5 +1,6 @@
 package com.luxwallet.app.feature.planner
 
+import androidx.room.withTransaction
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.luxwallet.app.LuxWalletApp
@@ -40,7 +41,19 @@ class PlannerViewModel(private val app: LuxWalletApp) : ViewModel() {
         if (saving.value) return
         saving.value = true
         viewModelScope.launch {
-            try { app.paydayPlanRepository.save(plan); message.value = "Rencana tersimpan. Saldo rekening tidak diubah."; onSaved() }
+            try {
+                app.database.withTransaction {
+                    val categories = app.categoryRepository.observeAll().first()
+                    val captured = PaydayMath.capture(plan, app.transactionRepository.observeAll().first(),
+                        categories.filter { it.name == TransportPlan.CATEGORY }.map { it.id }.toSet(),
+                        categories.filter { it.name == PaydayPlan.BILLS_CATEGORY }.map { it.id }.toSet())
+                    captured.validate()
+                    app.paydayPlanRepository.save(captured)
+                }
+                message.value = "Rencana diperbarui. Belanja sebelum konfirmasi tetap mengurangi budget hari ini; saldo tidak dipotong ulang."
+                onSaved()
+            }
+            catch (e: kotlinx.coroutines.CancellationException) { throw e }
             catch (e: Exception) { message.value = e.message ?: "Rencana belum tersimpan. Coba lagi." }
             finally { saving.value = false }
         }

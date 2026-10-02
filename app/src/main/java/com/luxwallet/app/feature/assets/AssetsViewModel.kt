@@ -48,18 +48,18 @@ class AssetsViewModel(
     val error = MutableStateFlow<String?>(null)
 
     fun saveValue(accountId: Long?, asset: AssetEntity?, liability: LiabilityEntity?, name: String,
-                  assetClass: com.luxwallet.app.core.model.AssetClass, value: Long, onSaved: () -> Unit) {
+                  assetClass: com.luxwallet.app.core.model.AssetClass, value: Long, originalValue: Long, notes: String, onSaved: () -> Unit) {
         if (saving.value) return
-        if (value < 0 || name.isBlank()) { error.value = "Isi nama dan nominal yang valid."; return }
+        if (value < 0 || name.isBlank() || notes.length > 2000) { error.value = "Isi nama dan nominal yang valid."; return }
         saving.value = true
         error.value = null
         viewModelScope.launch {
             try {
                 when {
-                    accountId != null -> transactionRepository.updateAccountValue(accountId, name, value)
-                    liability != null -> liabilityRepository.upsert(liability.copy(name = name, currentOutstanding = value, updatedAt = System.currentTimeMillis()))
-                    else -> assetRepository.upsert(asset?.copy(name = name, assetClass = assetClass, currentValue = value, updatedAt = System.currentTimeMillis())
-                        ?: AssetEntity(name = name, assetClass = assetClass, currentValue = value, updatedAt = System.currentTimeMillis()))
+                    accountId != null -> transactionRepository.updateAccountValue(accountId, name, value.takeIf { it != originalValue }, notes)
+                    liability != null -> liabilityRepository.upsert(liability.copy(name = name, notes = notes.trim().ifBlank { null }, currentOutstanding = value, updatedAt = System.currentTimeMillis()))
+                    else -> assetRepository.upsert(asset?.copy(name = name, notes = notes.trim().ifBlank { null }, assetClass = assetClass, currentValue = value, updatedAt = System.currentTimeMillis())
+                        ?: AssetEntity(name = name, notes = notes.trim().ifBlank { null }, assetClass = assetClass, currentValue = value, updatedAt = System.currentTimeMillis()))
                 }
                 onSaved()
             } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
@@ -68,7 +68,7 @@ class AssetsViewModel(
         }
     }
 
-    fun archive(accountId: Long?, asset: AssetEntity?, onSaved: () -> Unit) {
+    fun delete(accountId: Long?, asset: AssetEntity?, liability: LiabilityEntity?, onSaved: () -> Unit) {
         if (saving.value) return
         saving.value = true
         error.value = null
@@ -76,9 +76,10 @@ class AssetsViewModel(
             try {
                 if (accountId != null) accountRepository.setActive(accountId, false)
                 else if (asset != null) assetRepository.delete(asset)
+                else if (liability != null) liabilityRepository.delete(liability)
                 onSaved()
             } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
-            catch (_: Exception) { error.value = "Aset belum diarsipkan. Coba lagi." }
+            catch (_: Exception) { error.value = "Aset belum dihapus. Coba lagi." }
             finally { saving.value = false }
         }
     }

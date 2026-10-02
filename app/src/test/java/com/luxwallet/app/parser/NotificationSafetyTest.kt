@@ -21,8 +21,8 @@ class NotificationSafetyTest {
         }
     }
     @Test fun unfamiliarFinancialFormatIsPreservedForReview() {
-        assertTrue(registry.parse(NotificationInput(SourceApp.SEABANK, "Transfer diterima",
-            "Transfer masuk Rp50.000 dari Budi", postedAt = 1L)) is ParseResult.Failed)
+        assertTrue(registry.parse(NotificationInput(SourceApp.SEABANK, "Aktivitas rekening",
+            "Pemasukan Rp50.000 membutuhkan pemeriksaan", postedAt = 1L)) is ParseResult.Failed)
     }
     @Test fun expandedTextAndNotificationIdentityAffectHash() {
         fun hash(key: String, bigText: String) = NotificationRepository.hashPayload("SEABANK", "bank", "Transaksi", "", 1L, key, bigText)
@@ -41,4 +41,31 @@ class NotificationSafetyTest {
         assertNull(AmountParser.normalizeOrNull("999999999999999999999999"))
         assertNull(AmountParser.normalizeOrNull("1,50"))
     }
+    @Test fun seaBankIncomingUsesTransferAmountAndFullDigitGroups() {
+        listOf("Rp647.500", "Rp647500", "IDR 647,500.00").forEach { amount ->
+            val result = registry.parse(NotificationInput(SourceApp.SEABANK, "TRANSFER MASUK",
+                "kamu menerima transfer saldo senilai $amount ke rekening 3422.", postedAt = 123)) as ParseResult.Parsed
+            assertEquals(647500L, result.candidate.amount)
+            assertEquals(com.luxwallet.app.core.model.TransactionDirection.IN, result.candidate.direction)
+            assertEquals(123L, result.candidate.transactionTime)
+        }
+    }
+    @Test fun incomingRealTimeIsNotMisclassifiedAsOutgoing() {
+        val result = registry.parse(NotificationInput(SourceApp.SEABANK, "TRANSFER MASUK",
+            "Kamu menerima transfer real-time senilai Rp647.500 ke rekening 3422.", postedAt = 123)) as ParseResult.Parsed
+        assertEquals(com.luxwallet.app.core.model.TransactionDirection.IN, result.candidate.direction)
+        assertEquals(647500L, result.candidate.amount)
+    }
+    @Test fun incomingWithoutAmountNeverUsesAccountDigits() {
+        assertTrue(registry.parse(NotificationInput(SourceApp.SEABANK, "TRANSFER MASUK",
+            "Kamu menerima transfer saldo ke rekening 3422.", postedAt = 123)) is ParseResult.Failed)
+    }
+    @Test fun pendingAndContradictoryIncomingNeverCreditsAccount() {
+        listOf("Kamu belum menerima transfer senilai Rp647.500", "Kamu akan menerima transfer senilai Rp647.500",
+            "Transfer masuk gagal senilai Rp647.500", "Transfer masuk pending senilai Rp647.500",
+            "Kamu melakukan transfer keluar senilai Rp647.500").forEach {
+            assertFalse(registry.parse(NotificationInput(SourceApp.SEABANK, "TRANSFER MASUK", it, postedAt = 123)) is ParseResult.Parsed)
+        }
+    }
+
 }

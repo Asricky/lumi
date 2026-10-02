@@ -20,5 +20,6 @@ data class AccountEntity(
     val isOwnedByUser: Boolean = true,
     val includeInNetWorth: Boolean = true,
     val isActive: Boolean = true,
-    val lastReconciledAt: Long? = null
+    val lastReconciledAt: Long? = null,
+    val notes: String? = null
 )

@@ -82,4 +82,69 @@ class PaydayPlanTest {
         assertTrue(MoneyCoach.canNotify(start, start.minusDays(1).toString(), 9))
         assertEquals("Mulai dari uang yang tersedia", MoneyCoach.advise(null, start).title)
     }
+    private fun capturedPlan(txs: List<TransactionEntity>, cash: Long = 800000, hour: Int = 15) = PaydayMath.capture(
+        PaydayPlan(time(start, hour), start.toEpochDay(), start.plusDays(2).toEpochDay(), cash, transportDaily = 0),
+        txs, setOf(1), setOf(2), zone)
+    @Test fun confirmationSubtractsEarlierSpendingFromBudgetButNotCashAgain() {
+        val txs = listOf(tx(start, 200000))
+        val p = capturedPlan(txs)
+        val s = PaydayMath.status(p, txs, setOf(1), setOf(2), start, zone)
+        assertEquals(800000L, s.cashRemaining)
+        assertEquals(500000L, s.dailyBudget)
+        assertEquals(200000L, s.spentToday)
+        assertEquals(300000L, s.remainingToday)
+        assertEquals(300000L, AdaptiveBudgetEngine.calculate(s, 800000, start)!!.safeToSpend)
+    }
+    @Test fun repeatedConfirmationKeepsEarlierSpendingAndNewSpendingCountsOnce() {
+        val txs = listOf(tx(start, 200000), tx(start, 100000).copy(transactionTime = time(start, 16)))
+        val p = capturedPlan(txs)
+        val s = PaydayMath.status(p, txs, setOf(1), setOf(2), start, zone)
+        assertEquals(700000L, s.cashRemaining)
+        assertEquals(300000L, s.spentToday)
+        assertEquals(200000L, s.remainingToday)
+        val refreshed = capturedPlan(txs, 700000, 17)
+        val after = PaydayMath.status(refreshed, txs, setOf(1), setOf(2), start, zone)
+        assertEquals(s.cashRemaining, after.cashRemaining)
+        assertEquals(s.remainingToday, after.remainingToday)
+        assertEquals(refreshed, PaydayMath.capture(refreshed, txs, setOf(1), setOf(2), zone))
+    }
+    @Test fun earlierSpendDoesNotLeakIntoNextDayAndTransfersAreNotSpending() {
+        val txs = listOf(tx(start, 200000), tx(start, 500000).copy(isInternalTransfer = true),
+            tx(start, 500000).copy(type = TransactionType.EWALLET_TOPUP),
+            tx(start, 500000).copy(reviewStatus = ReviewStatus.IGNORED))
+        val p = capturedPlan(txs)
+        assertEquals(200000L, p.spentBeforeCapture)
+        val tomorrow = PaydayMath.status(p, txs, setOf(1), setOf(2), start.plusDays(1), zone)
+        assertEquals(0L, tomorrow.spentToday)
+        assertEquals(500000L, tomorrow.remainingToday)
+    }
+    @Test fun paidTransportAndBillsAreNotReservedOrChargedTwice() {
+        val monday = start.plusDays(2)
+        val base = PaydayPlan(time(monday, 15), monday.toEpochDay(), monday.plusDays(2).toEpochDay(), 800000, bills = 50000)
+        val txs = listOf(tx(monday, 6000, 1), tx(monday, 100000, 2), tx(monday, 20000))
+        val p = PaydayMath.capture(base, txs, setOf(1), setOf(2), zone)
+        assertEquals(2, p.transportDays)
+        assertEquals(12000L, p.transportGross)
+        assertEquals(6000L, p.transportReserve)
+        assertEquals(20000L, p.spentBeforeCapture)
+        val s = PaydayMath.status(p, txs, setOf(1), setOf(2), monday, zone)
+        assertEquals(800000L, s.cashRemaining)
+        assertEquals(20000L, s.spentToday)
+        assertEquals(50000L, p.bills) // input contains ONLY unpaid bills
+    }
+    @Test fun weekendTransportWithoutReserveCountsAsFreeSpending() {
+        val txs = listOf(tx(start, 6000, 1))
+        val base = PaydayPlan(time(start, 15), start.toEpochDay(), start.plusDays(2).toEpochDay(), 800000)
+        val p = PaydayMath.capture(base, txs, setOf(1), setOf(2), zone)
+        assertEquals(0, p.transportDays)
+        assertEquals(0L, p.transportReserve)
+        assertEquals(6000L, p.spentBeforeCapture)
+    }
+    @Test fun oldSavedPlanRemainsReadableWithoutNewFields() {
+        val old = """{"capturedAt":1,"startDay":20000,"payday":20002,"availableCash":800000,"transportDaily":0}"""
+        val p = kotlinx.serialization.json.Json.decodeFromString<PaydayPlan>(old)
+        assertEquals(0L, p.spentBeforeCapture)
+        assertEquals(400000L, p.dailyBudget)
+    }
+
 }

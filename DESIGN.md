@@ -116,3 +116,13 @@ Tinjauan: toolbar jumlah pilihan + Pilih semua/Batal pilih + Hapus terpilih teta
 Panel kalkulator putih/surface dengan sudut 24 dp, ekspresi rata kanan, label hasil ringkas, hasil berwarna primary. Tombol angka netral; operator mint; tombol sama dengan teal penuh. Target sentuh minimal 54 dp, jarak 8 dp, sudut 18 dp. Layar tetap bisa digulir pada perangkat kecil dan saat keyboard terbuka. Titik adalah ribuan dan koma desimal, konsisten dengan MoneyField.
 
 Grafik pengeluaran memakai batang terpisah agar setiap tanggal mudah dibaca. Batang umum teal transparan, batang terpilih teal solid, latar garis pilih ringan; grid putus-putus. Skala kiri 0/setengah/maksimum, tanggal di bawah, kartu detail mint, total dan rata-rata di atas. Tidak memakai kurva halus yang mengarang nilai di antara tanggal. Privasi menyembunyikan ringkasan dan grafik sekaligus.
+
+
+## v9 · Kejelasan sisa budget dan pengelolaan aset
+
+- Kartu utama memakai label **Sisa budget hari ini** dengan angka terbesar, diikuti “Budget … − terpakai …”, bar pemakaian, serta cadangan transportasi tersisa. Penyesuaian karena dana terbatas diberi alasan. Penjelasan rumus disediakan lewat ikon info dan rincian rencana; hindari istilah saldo untuk menyebut budget.
+- Transportasi menampilkan jumlah hari × tarif, pembayaran sebelum konfirmasi, cadangan awal tersisa, pemakaian sejak konfirmasi, dan cadangan saat ini. Nominal tidak muncul ketika mode privasi aktif.
+- MoneyField tetap memakai titik setiap tiga digit. Nilai nol menjadi placeholder, sehingga angka baru menggantikannya; kolom opsional kosong dianggap nol saat menyimpan rencana.
+- Sheet aset: nama → jenis (jika relevan) → nominal → catatan multiline opsional → Simpan perubahan → Hapus. Dialog menjelaskan akibat berbeda untuk rekening dan aset manual. Catatan ringkas maksimum dua baris di kartu, disembunyikan saat privasi aktif. Arsip lama tetap dapat dikelola, tanpa menawarkan arsip baru.
+- Kalkulator mempertahankan keypad yang konsisten; hasil headlineMedium rata kanan, aksi “Gunakan kekayaan bersih” ringkas, tanpa petunjuk “Tekan =”.
+- Tinjauan memiliki aksi Coba baca ulang untuk pesan gagal, disertai konfirmasi bahwa transaksi belum dicatat manual. Hasil dan alasan penolakan ditampilkan di toolbar. Jumlah tinjauan di Beranda merupakan tautan terpisah dari ekspresi Lumi.

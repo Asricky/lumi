@@ -21,7 +21,7 @@ class SeaBankNotificationParser : NotificationParser {
 
     override fun canParse(input: NotificationInput): Boolean {
         val text = input.combinedText
-        return SHOPS_PAYMENT_REGEX.containsMatchIn(text) ||
+        return INCOMING_REGEX.containsMatchIn(text) || SHOPS_PAYMENT_REGEX.containsMatchIn(text) ||
             text.contains("transfer virtual account", ignoreCase = true) ||
             text.contains("transfer real-time", ignoreCase = true) ||
             text.contains("Pembayaran QRIS", ignoreCase = true) ||
@@ -32,6 +32,7 @@ class SeaBankNotificationParser : NotificationParser {
         val text = input.combinedText
 
         return when {
+            INCOMING_REGEX.containsMatchIn(text) -> parseIncoming(text, input)
             text.contains("Top Up e-Wallet", ignoreCase = true) -> parseEwalletTopup(text, input)
             text.contains("transfer virtual account", ignoreCase = true) -> parseVirtualAccountTransfer(text, input)
             text.contains("Pembayaran QRIS", ignoreCase = true) -> parseQris(text, input)
@@ -39,6 +40,20 @@ class SeaBankNotificationParser : NotificationParser {
             SHOPS_PAYMENT_REGEX.containsMatchIn(text) -> parseInstantPayment(text, input)
             else -> ParseResult.NotFinancial
         }
+    }
+
+    private fun parseIncoming(text: String, input: NotificationInput): ParseResult {
+        if (Regex("""\b(belum|akan|gagal|pending|menunggu|dibatalkan|permintaan|promo|failed|declined)\b|tidak berhasil""", RegexOption.IGNORE_CASE).containsMatchIn(text))
+            return ParseResult.NotFinancial
+        if (Regex("""(?:melakukan|mengirim) transfer|transfer keluar""", RegexOption.IGNORE_CASE).containsMatchIn(text))
+            return ParseResult.Failed("Arah transfer SeaBank belum jelas")
+        // Anchor to the transfer amount, never to the destination account number.
+        val match = Regex("""(?:senilai|sebesar|sejumlah)\s*(?:Rp\.?\s*|IDR\s*)?([0-9]+(?:[.,][0-9]+)*)|(?:transfer masuk|transfer diterima)\s*(?:Rp\.?\s*|IDR\s*)([0-9]+(?:[.,][0-9]+)*)""", RegexOption.IGNORE_CASE).find(text)
+        val amount = match?.groupValues?.drop(1)?.firstOrNull { it.isNotEmpty() }?.let(AmountParser::normalizeOrNull)
+            ?.takeIf { it > 0 } ?: return ParseResult.Failed("Nominal transfer masuk SeaBank belum terbaca")
+        return ParseResult.Parsed(TransactionCandidate(sourceApp = sourceApp, direction = TransactionDirection.IN,
+            amount = amount, type = TransactionType.EXTERNAL_TRANSFER, transactionTime = input.postedAt,
+            confidenceScore = 0.95))
     }
 
     /** Sample 1: "SeaBank Bayar Instan: Pembayaran Shopee kamu sebesar Rp16.900 ... berhasil." */
@@ -137,6 +152,7 @@ class SeaBankNotificationParser : NotificationParser {
     }
 
     companion object {
+        private val INCOMING_REGEX = Regex("""\btransfer masuk\b|\b(?:kamu|anda)\s+(?:(?:telah|berhasil)\s+)?menerima\s+(?:transfer|dana)|\b(?:transfer|dana)\s+(?:(?:telah|berhasil)\s+)?diterima\b""", RegexOption.IGNORE_CASE)
         private val SHOPS_PAYMENT_REGEX =
             Regex("""Bayar Instan:\s*Pembayaran (.+?) kamu sebesar""", RegexOption.IGNORE_CASE)
         private val DESTINATION_KEPADA_REGEX = Regex("""kepada ([A-Za-z]+)""", RegexOption.IGNORE_CASE)
